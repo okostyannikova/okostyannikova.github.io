@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Калькулятор объема позиции для фьючерсов</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        .border-primary {
+            border-color: #6B46C1;
+        }
+        .text-primary {
+            color: #6B46C1;
+        }
+        .bg-primary {
+            background-color: #6B46C1;
+        }
+        .bg-primary-light {
+            background-color: #9F7AEA;
+        }
+        .hover-bg-primary-dark:hover {
+            background-color: #553C9A;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+
+    <div class="container mx-auto px-4 py-8">
+        <div class="max-w-md mx-auto bg-white p-8 rounded-lg shadow-lg">
+            <h1 class="text-3xl font-bold mb-6 text-center text-primary">Калькулятор объема позиции для фьючерсов</h1>
+            <form id="calculator-form">
+                <div class="mb-6">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="deposit">
+                        Объем депозита (USD)
+                    </label>
+                    <input class="shadow appearance-none border border-primary rounded w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="deposit" type="number" placeholder="Введите объем депозита">
+                </div>
+                <div class="mb-6">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="risk">
+                        Процент риска от депозита (%)
+                    </label>
+                    <input class="shadow appearance-none border border-primary rounded w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="risk" type="number" placeholder="Введите процент риска">
+                </div>
+                <div class="mb-6">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="stopLoss">
+                        Процент стоп-лосса (%)
+                    </label>
+                    <input class="shadow appearance-none border border-primary rounded w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="stopLoss" type="number" placeholder="Введите процент стоп-лосса">
+                </div>
+                <div class="mb-6">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="leverage">
+                        Плечо
+                    </label>
+                    <input class="shadow appearance-none border border-primary rounded w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="leverage" type="number" placeholder="Введите плечо">
+                </div>
+                <div class="flex items-center justify-between">
+                    <button class="bg-primary hover-bg-primary-dark text-white font-bold py-3 px-4 rounded focus:outline-none focus:shadow-outline" type="button" onclick="calculatePositionSize()">
+                        Рассчитать
+                    </button>
+                </div>
+            </form>
+            <div id="result" class="mt-6 text-center text-lg font-bold"></div>
+        </div>
+    </div>
+
+    <script>
+        function saveInputs() {
+            const deposit = document.getElementById('deposit').value;
+            const risk = document.getElementById('risk').value;
+            const stopLoss = document.getElementById('stopLoss').value;
+            const leverage = document.getElementById('leverage').value;
+
+            localStorage.setItem('deposit', deposit);
+            localStorage.setItem('risk', risk);
+            localStorage.setItem('stopLoss', stopLoss);
+            localStorage.setItem('leverage', leverage);
+        }
+
+        function loadInputs() {
+            const deposit = localStorage.getItem('deposit');
+            const risk = localStorage.getItem('risk');
+            const stopLoss = localStorage.getItem('stopLoss');
+            const leverage = localStorage.getItem('leverage');
+
+            if (deposit !== null) document.getElementById('deposit').value = deposit;
+            if (risk !== null) document.getElementById('risk').value = risk;
+            if (stopLoss !== null) document.getElementById('stopLoss').value = stopLoss;
+            if (leverage !== null) document.getElementById('leverage').value = leverage;
+        }
+
+        function calculatePositionSize() {
+            const deposit = parseFloat(document.getElementById('deposit').value);
+            const risk = parseFloat(document.getElementById('risk').value) / 100;
+            const stopLoss = parseFloat(document.getElementById('stopLoss').value) / 100;
+            const leverage = parseFloat(document.getElementById('leverage').value);
+
+            if (isNaN(deposit) || isNaN(risk) || isNaN(stopLoss) || isNaN(leverage)) {
+                alert("Пожалуйста, заполните все поля корректными значениями.");
+                return;
+            }
+
+            saveInputs();
+
+            const riskAmount = deposit * risk;
+            const positionSize = (riskAmount / stopLoss) * leverage;
+            const margin = positionSize / leverage;
+            const lossAmount = riskAmount;
+
+            document.getElementById('result').innerHTML = `Рекомендуемый объем позиции: <span class="text-primary">${positionSize.toFixed(2)} USD</span><br>Требуемая маржа: <span class="text-primary">${margin.toFixed(2)} USD</span><br>Убыток по стоп-лоссу: <span class="text-primary">${lossAmount.toFixed(2)} USD</span>`;
+        }
+
+        document.addEventListener('DOMContentLoaded', loadInputs);
+    </script>
+
+</body>
+</html>
