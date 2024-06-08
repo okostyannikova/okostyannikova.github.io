@@ -2,10 +2,8 @@ const CACHE_NAME = 'futures-calculator-cache-v1';
 const urlsToCache = [
     '/',
     '/index.html',
-    '/styles.css', // если есть дополнительные стили
     '/manifest.json',
-    '/icons/icon-192x192.png',
-    '/icons/icon-512x512.png'
+    '/icon-512x512.png'
 ];
 
 self.addEventListener('install', event => {
