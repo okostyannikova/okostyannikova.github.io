@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Expense calc</title>
+    <script src="https://unpkg.com/@tailwindcss/browser@4"></script>
+  </head>
+  <body>
+    <div class="mx-auto max-w-xs text-center leading-7">
+      <div class="text-2xl mt-10">
+        <p>
+          You can spend
+          <span class="text-indigo-600"><span id="budget"></span> pln</span> per
+          day.
+        </p>
+        <p>
+          Next income in a <span id="days" class="text-indigo-600"></span> days.
+        </p>
+      </div>
+
+      <form class="space-y-6 mt-10">
+        <div>
+          <div class="flex items-center justify-between">
+            <label
+              for="balance"
+              class="block text-sm/6 font-medium text-gray-900"
+              >Current balance</label
+            >
+          </div>
+          <div class="mt-2">
+            <input
+              type="number"
+              name="balance"
+              id="balance"
+              required
+              class="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6"
+            />
+          </div>
+        </div>
+
+        <div>
+          <div class="flex items-center justify-between">
+            <label for="date" class="block text-sm/6 font-medium text-gray-900"
+              >Days to next income</label
+            >
+          </div>
+          <div class="mt-2">
+            <input
+              type="date"
+              name="date"
+              id="date"
+              required
+              class="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6"
+            />
+          </div>
+        </div>
+
+        <div>
+          <button
+            type="submit"
+            class="flex w-full justify-center rounded-md bg-indigo-600 px-3 py-1.5 text-sm/6 font-semibold text-white shadow-xs hover:bg-indigo-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+          >
+            Calculate
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <script>
+      const formElement = document.querySelector('form')
+      const dateInput = document.querySelector('input[type="date"]')
+      const balanceInput = document.querySelector('input[type="number"]')
+      const finalBudgetElement = document.querySelector('#budget')
+      const daysToIncomeElement = document.querySelector('#days')
+
+      const BALANCE = 'balance'
+      const DATE_TO_INCOME = 'date_to_income'
+      const DAYS_TO_INCOME = 'days_to_income'
+      const FINAL_BUDGET = 'final_budget'
+
+      if (localStorage.getItem(BALANCE)) {
+        balanceInput.value = localStorage.getItem(BALANCE)
+      }
+
+      if (localStorage.getItem(DATE_TO_INCOME)) {
+        dateInput.value = localStorage.getItem(DATE_TO_INCOME)
+      }
+
+      if (localStorage.getItem(FINAL_BUDGET)) {
+        finalBudgetElement.textContent = localStorage.getItem(FINAL_BUDGET)
+      }
+
+      if (localStorage.getItem(DAYS_TO_INCOME)) {
+        daysToIncomeElement.textContent = localStorage.getItem(DAYS_TO_INCOME)
+      }
+
+      balanceInput.addEventListener('input', (event) => {
+        localStorage.setItem(BALANCE, event.target.value)
+      })
+
+      dateInput.addEventListener('input', (event) => {
+        localStorage.setItem(DATE_TO_INCOME, event.target.value)
+      })
+
+      formElement.addEventListener('submit', (event) => {
+        event.preventDefault()
+
+        const msInADay = 1000 * 60 * 60 * 24
+        const daysToIncome = Math.floor(
+          (new Date(dateInput.value) - new Date()) / msInADay
+        )
+
+        const final_budget = Math.floor(balanceInput.value / daysToIncome)
+
+        finalBudgetElement.textContent = final_budget
+        daysToIncomeElement.textContent = daysToIncome
+
+        localStorage.setItem(FINAL_BUDGET, final_budget)
+        localStorage.setItem(DAYS_TO_INCOME, daysToIncome)
+      })
+    </script>
+  </body>
+</html>
