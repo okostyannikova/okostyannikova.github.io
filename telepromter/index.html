@@ -178,34 +178,6 @@
     letter-spacing: 0.01em;
   }
 
-  /* reading marker */
-  #marker {
-    position: absolute;
-    top: 50%;
-    left: 0; right: 0;
-    height: 1px;
-    background: rgba(200,168,75,0.45);
-    pointer-events: none;
-    z-index: 5;
-    transform: translateY(-50%);
-  }
-  #marker::before {
-    content: '';
-    position: absolute;
-    left: 0; top: -3px;
-    width: 6px; height: 7px;
-    background: var(--accent);
-    clip-path: polygon(0 0, 100% 50%, 0 100%);
-  }
-  #marker::after {
-    content: '';
-    position: absolute;
-    right: 0; top: -3px;
-    width: 6px; height: 7px;
-    background: var(--accent);
-    clip-path: polygon(100% 0, 0 50%, 100% 100%);
-  }
-
   #status-badge {
     position: absolute;
     top: 12px; right: 12px;
@@ -218,21 +190,6 @@
     transition: color 0.3s;
   }
   #status-badge.playing { color: var(--accent); }
-
-  #hint {
-    position: absolute;
-    bottom: 18px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 20;
-    font-size: 9px;
-    letter-spacing: 0.09em;
-    text-transform: uppercase;
-    color: rgba(200,168,75,0.28);
-    white-space: nowrap;
-    pointer-events: none;
-    transition: opacity 0.5s;
-  }
 
   #progress-bar {
     position: absolute;
@@ -453,7 +410,7 @@ X / A → Старт та Стоп
 
 R1 → швидше
 
-L1 → повільніше
+R2 → повільніше
 
 ──────────────
 
@@ -472,9 +429,7 @@ A+ A− → розмір шрифту
 Гарної зйомки!</div>
   </div>
 
-  <div id="marker"></div>
   <div id="status-badge">⏸ пауза</div>
-  <div id="hint">X/A — старт·стоп · ○ вперед · □ назад · R1/L1 — швидкість</div>
 
   <div id="progress-bar">
     <div id="progress-fill"></div>
@@ -519,7 +474,6 @@ const scrollArea   = $('scroll-area');
 const scrollInner  = $('scroll-inner');
 const teletext     = $('teletext');
 const statusBadge  = $('status-badge');
-const hint         = $('hint');
 const progressFill = $('progress-fill');
 const countdownEl  = $('countdown');
 const editOverlay  = $('edit-overlay');
@@ -732,7 +686,6 @@ function setPlayUI(on) {
   btnPlay.classList.toggle('playing', on);
   statusBadge.textContent = on ? '▶ відтворення' : '⏸ пауза';
   statusBadge.classList.toggle('playing', on);
-  hint.style.opacity = on ? '0' : '1';
 }
 
 function engagePlay() {
@@ -969,8 +922,8 @@ function pollGamepad() {
     if (!gp) continue;
 
     if (wasPressed('x',  gp.buttons[0]?.pressed)) togglePlay();
-    if (wasPressed('r1', gp.buttons[5]?.pressed)) setSpeed(speed + 1);
-    if (wasPressed('l1', gp.buttons[4]?.pressed)) setSpeed(speed - 1);
+    if (wasPressed('r1', gp.buttons[5]?.pressed)) setSpeed(speed + 1);  // R1 → швидше
+    if (wasPressed('r2', gp.buttons[7]?.pressed)) setSpeed(speed - 1);  // R2 → повільніше
 
     const btnBack = gp.buttons[2]?.pressed;  // квадрат
     const btnFwd  = gp.buttons[1]?.pressed;  // коло
