@@ -179,8 +179,8 @@
   }
 
   #status-badge {
-    position: absolute;
-    top: 12px; right: 12px;
+    position: fixed;
+    top: calc(var(--toolbar-h) + 12px); right: 12px;
     z-index: 20;
     font-size: 10px;
     letter-spacing: 0.1em;
@@ -192,8 +192,8 @@
   #status-badge.playing { color: var(--accent); }
 
   #progress-bar {
-    position: absolute;
-    left: 0; top: 0; bottom: 0;
+    position: fixed;
+    left: 0; top: var(--toolbar-h); bottom: 0;
     width: 2px;
     z-index: 15;
     pointer-events: none;
@@ -428,12 +428,12 @@ A+ A− → розмір шрифту
 
 Гарної зйомки!</div>
   </div>
+</div>
 
-  <div id="status-badge">⏸ пауза</div>
+<div id="status-badge">⏸ пауза</div>
 
-  <div id="progress-bar">
-    <div id="progress-fill"></div>
-  </div>
+<div id="progress-bar">
+  <div id="progress-fill"></div>
 </div>
 
 <!-- COUNTDOWN -->
@@ -765,7 +765,8 @@ function changeLineHeight(delta) {
 function applyMirror() {
   const sx = mirrorH ? -1 : 1;
   const sy = mirrorV ? -1 : 1;
-  scrollInner.style.transform = (mirrorH || mirrorV) ? `scale(${sx}, ${sy})` : 'none';
+  // трансформуємо видиме вікно, а не контент — рядок по центру лишається на місці
+  scrollArea.style.transform = (mirrorH || mirrorV) ? `scale(${sx}, ${sy})` : 'none';
   btnMirror.classList.toggle('active', mirrorH);
   btnMirrorV.classList.toggle('active', mirrorV);
 }
