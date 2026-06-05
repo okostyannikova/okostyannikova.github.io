@@ -7,9 +7,9 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="apple-mobile-web-app-title" content="Телепромптер">
 <title>Телепромптер</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Verdana&display=swap" rel="stylesheet">
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&display=swap');
-
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 
   :root {
@@ -18,6 +18,7 @@
     --accent: #c8a84b;
     --dim: rgba(240,237,228,0.35);
     --toolbar-h: 56px;
+    --pad: 48px;
   }
 
   html, body {
@@ -25,7 +26,7 @@
     overflow: hidden;
     background: var(--bg);
     color: var(--text);
-    font-family: 'Courier Prime', 'Courier New', monospace;
+    font-family: Verdana, Geneva, sans-serif;
     -webkit-user-select: none;
     user-select: none;
   }
@@ -36,79 +37,109 @@
     top: 0; left: 0; right: 0;
     height: var(--toolbar-h);
     z-index: 100;
-    background: rgba(10,10,10,0.92);
+    background: rgba(10,10,10,0.95);
     border-bottom: 1px solid rgba(200,168,75,0.2);
     display: flex;
     align-items: center;
-    gap: 0;
-    padding: 0 8px;
+    padding: 0 6px;
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
+    gap: 2px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
   }
+  #toolbar::-webkit-scrollbar { display: none; }
 
   .tb-btn {
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 2px;
-    padding: 6px 10px;
+    padding: 4px 8px;
     background: none;
     border: none;
     color: var(--dim);
-    font-family: 'Courier Prime', monospace;
-    font-size: 10px;
-    letter-spacing: 0.08em;
+    font-family: Verdana, sans-serif;
+    font-size: 9px;
+    letter-spacing: 0.06em;
     text-transform: uppercase;
     cursor: pointer;
     transition: color 0.2s;
     min-width: 44px;
     min-height: 44px;
     justify-content: center;
+    flex-shrink: 0;
   }
-  .tb-btn svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+  .tb-btn svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
   .tb-btn:active { transform: scale(0.93); }
   .tb-btn.active, .tb-btn:hover { color: var(--accent); }
-
   #btn-play.playing { color: var(--accent); }
 
-  /* speed control */
+  .tb-sep {
+    width: 1px;
+    height: 24px;
+    background: rgba(200,168,75,0.15);
+    flex-shrink: 0;
+    margin: 0 2px;
+  }
+
+  .icon-btn {
+    min-width: 36px;
+    min-height: 36px;
+    padding: 0 6px;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(240,237,228,0.05);
+    border: 1px solid rgba(200,168,75,0.15);
+    border-radius: 6px;
+    color: var(--dim);
+    font-family: Verdana, sans-serif;
+    font-size: 13px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.15s;
+    flex-shrink: 0;
+  }
+  .icon-btn:active { color: var(--accent); border-color: var(--accent); }
+
   #speed-section {
-    margin-left: auto;
     display: flex;
     align-items: center;
-    gap: 6px;
-    padding-right: 4px;
+    gap: 4px;
+    flex-shrink: 0;
+    margin-left: auto;
+    padding-left: 4px;
   }
-  #speed-label { font-size: 10px; color: var(--dim); letter-spacing: 0.08em; text-transform: uppercase; }
+  #speed-label { font-size: 9px; color: var(--dim); letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap; }
   #speed-range {
     -webkit-appearance: none;
     appearance: none;
-    width: 72px;
+    width: 60px;
     height: 3px;
     background: rgba(200,168,75,0.2);
     border-radius: 2px;
     outline: none;
+    flex-shrink: 0;
   }
   #speed-range::-webkit-slider-thumb {
     -webkit-appearance: none;
-    width: 16px; height: 16px;
+    width: 18px; height: 18px;
     border-radius: 50%;
     background: var(--accent);
     cursor: pointer;
   }
-  #speed-num { font-size: 12px; color: var(--text); min-width: 16px; text-align: right; }
+  #speed-num { font-size: 11px; color: var(--text); min-width: 14px; text-align: right; }
 
   /* ── READING AREA ── */
   #scroll-area {
     position: fixed;
     top: var(--toolbar-h);
-    left: 0; right: 0;
-    bottom: 0;
-    overflow: hidden;
+    left: 0; right: 0; bottom: 0;
+    overflow-y: scroll;
+    -webkit-overflow-scrolling: touch;
     cursor: pointer;
   }
 
-  /* gradient fades at top/bottom */
   #scroll-area::before, #scroll-area::after {
     content: '';
     position: absolute;
@@ -117,24 +148,17 @@
     z-index: 10;
     pointer-events: none;
   }
-  #scroll-area::before {
-    top: 0;
-    background: linear-gradient(to bottom, var(--bg), transparent);
-  }
-  #scroll-area::after {
-    bottom: 0;
-    background: linear-gradient(to top, var(--bg), transparent);
-  }
+  #scroll-area::before { top: 0; background: linear-gradient(to bottom, var(--bg), transparent); }
+  #scroll-area::after  { bottom: 0; background: linear-gradient(to top, var(--bg), transparent); }
 
   #scroll-inner {
-    padding: 60px 28px 400px;
-    will-change: transform;
-    transition: none;
+    padding: 60px var(--pad) 400px;
   }
 
   #teletext {
-    font-size: 28px;
-    line-height: 1.7;
+    font-family: Verdana, Geneva, sans-serif;
+    font-size: 32px;
+    line-height: 1.5;
     color: var(--text);
     white-space: pre-wrap;
     word-break: break-word;
@@ -147,7 +171,7 @@
     top: 50%;
     left: 0; right: 0;
     height: 1px;
-    background: rgba(200,168,75,0.4);
+    background: rgba(200,168,75,0.45);
     pointer-events: none;
     z-index: 5;
     transform: translateY(-50%);
@@ -169,14 +193,12 @@
     clip-path: polygon(100% 0, 0 50%, 100% 100%);
   }
 
-  /* status badge */
   #status-badge {
     position: absolute;
-    top: 14px;
-    right: 14px;
+    top: 12px; right: 12px;
     z-index: 20;
     font-size: 10px;
-    letter-spacing: 0.12em;
+    letter-spacing: 0.1em;
     text-transform: uppercase;
     color: var(--dim);
     pointer-events: none;
@@ -184,20 +206,32 @@
   }
   #status-badge.playing { color: var(--accent); }
 
-  /* controller hint */
   #hint {
     position: absolute;
-    bottom: 20px;
+    bottom: 18px;
     left: 50%;
     transform: translateX(-50%);
     z-index: 20;
-    font-size: 10px;
-    letter-spacing: 0.1em;
+    font-size: 9px;
+    letter-spacing: 0.09em;
     text-transform: uppercase;
-    color: rgba(200,168,75,0.3);
+    color: rgba(200,168,75,0.28);
     white-space: nowrap;
     pointer-events: none;
     transition: opacity 0.5s;
+  }
+
+  #progress-bar {
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 2px;
+    z-index: 15;
+    pointer-events: none;
+  }
+  #progress-fill {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    background: rgba(200,168,75,0.45);
   }
 
   /* ── EDIT OVERLAY ── */
@@ -206,7 +240,7 @@
     position: fixed;
     inset: 0;
     z-index: 200;
-    background: rgba(10,10,10,0.96);
+    background: rgba(10,10,10,0.97);
     flex-direction: column;
     padding: 16px;
     gap: 12px;
@@ -214,13 +248,13 @@
   #edit-overlay.open { display: flex; }
 
   #edit-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
     padding-bottom: 10px;
     border-bottom: 1px solid rgba(200,168,75,0.15);
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
   }
-  #edit-header span { font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); }
 
   #edit-ta {
     flex: 1;
@@ -228,8 +262,8 @@
     border: 1px solid rgba(200,168,75,0.2);
     border-radius: 8px;
     color: var(--text);
-    font-family: 'Courier Prime', monospace;
-    font-size: 16px;
+    font-family: Verdana, sans-serif;
+    font-size: 15px;
     line-height: 1.6;
     padding: 14px;
     resize: none;
@@ -244,115 +278,94 @@
     flex: 1;
     padding: 13px;
     border-radius: 8px;
-    font-family: 'Courier Prime', monospace;
-    font-size: 13px;
-    letter-spacing: 0.08em;
+    font-family: Verdana, sans-serif;
+    font-size: 12px;
+    letter-spacing: 0.06em;
     text-transform: uppercase;
     cursor: pointer;
     border: 1px solid rgba(200,168,75,0.3);
     transition: all 0.2s;
   }
-  #btn-save { background: var(--accent); color: #0a0a0a; border-color: var(--accent); font-weight: 700; }
+  #btn-save   { background: var(--accent); color: #0a0a0a; border-color: var(--accent); font-weight: 700; }
   #btn-cancel { background: transparent; color: var(--dim); }
-
-  /* font size controls */
-  #font-controls {
-    display: flex;
-    align-items: center;
-    gap: 2px;
-    margin-left: 4px;
-  }
-  .font-btn {
-    min-width: 36px;
-    min-height: 36px;
-    padding: 0;
-    display: flex; align-items: center; justify-content: center;
-    background: rgba(240,237,228,0.05);
-    border: 1px solid rgba(200,168,75,0.15);
-    border-radius: 6px;
-    color: var(--dim);
-    font-family: 'Courier Prime', monospace;
-    font-size: 16px;
-    cursor: pointer;
-    transition: all 0.15s;
-  }
-  .font-btn:active { color: var(--accent); border-color: var(--accent); }
-
-  #progress-bar {
-    position: absolute;
-    left: 0; top: 0; bottom: 0;
-    width: 2px;
-    z-index: 15;
-    pointer-events: none;
-  }
-  #progress-fill {
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    background: rgba(200,168,75,0.4);
-    transition: height 0.1s linear;
-  }
 </style>
 </head>
 <body>
 
 <!-- TOOLBAR -->
 <div id="toolbar">
+
   <button class="tb-btn" id="btn-play" onclick="togglePlay()" aria-label="Старт/Пауза">
     <svg id="icon-play" viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>
     <svg id="icon-pause" viewBox="0 0 24 24" style="display:none"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
     <span id="play-label">Старт</span>
   </button>
 
-  <button class="tb-btn" id="btn-edit" onclick="openEdit()" aria-label="Редагувати текст">
+  <button class="tb-btn" id="btn-edit" onclick="openEdit()" aria-label="Текст">
     <svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
     <span>Текст</span>
   </button>
 
-  <div id="font-controls">
-    <button class="font-btn" onclick="changeFontSize(-2)" aria-label="Зменшити шрифт">A−</button>
-    <button class="font-btn" onclick="changeFontSize(2)" aria-label="Збільшити шрифт">A+</button>
-  </div>
+  <div class="tb-sep"></div>
+
+  <button class="icon-btn" onclick="changeFontSize(-2)" aria-label="Менший шрифт">A−</button>
+  <button class="icon-btn" onclick="changeFontSize(2)"  aria-label="Більший шрифт">A+</button>
+
+  <div class="tb-sep"></div>
+
+  <button class="icon-btn" onclick="changeMargin(8)"  aria-label="Ширші поля">←|</button>
+  <button class="icon-btn" onclick="changeMargin(-8)" aria-label="Вужчі поля">|→</button>
+
+  <div class="tb-sep"></div>
+
+  <button class="tb-btn" id="btn-mirror" onclick="toggleMirror()" aria-label="Відзеркалення">
+    <svg viewBox="0 0 24 24"><path d="M12 3v18"/><path d="M5 7l4-4 4 4"/><path d="M5 17l4 4 4-4"/><path d="M19 7l-4-4-4 4"/><path d="M19 17l-4 4-4-4"/></svg>
+    <span>Дзерк.</span>
+  </button>
+
+  <div class="tb-sep"></div>
 
   <div id="speed-section">
     <span id="speed-label">▶▶</span>
     <input type="range" id="speed-range" min="1" max="10" value="3" step="1" oninput="setSpeed(this.value)">
     <span id="speed-num">3</span>
   </div>
+
 </div>
 
 <!-- SCROLL AREA -->
-<div id="scroll-area" onclick="togglePlay()">
+<div id="scroll-area">
   <div id="scroll-inner">
     <div id="teletext">Вставте ваш скрипт через кнопку «Текст» вгорі.
 
-Потім натисніть «Старт» або кнопку X / A на джойстику щоб почати прокрутку.
+Потім натисніть «Старт» або кнопку X / A на джойстику.
 
-──────────────────
+──────────────
 
 Керування джойстиком:
 
-  X / A  →  Старт та Стоп
+X / A → Старт та Стоп
 
-  Стік або хрестовина вгору  →  перемотати назад
+Стік / хрестовина → перемотка (по одній лінії)
 
-  Стік або хрестовина вниз  →  перемотати вперед
+R1 → швидше
 
-  R1 / RB  →  швидше
+L1 → повільніше
 
-  L1 / LB  →  повільніше
+──────────────
 
-──────────────────
+A+ A− → розмір шрифту
 
-Жовта лінія посередині — місце читання.
+←| |→ → ширина тексту
 
-Кнопки A+ та A− змінюють розмір тексту.
+Дзерк. → відзеркалення для суфлера
 
 Гарної зйомки!</div>
   </div>
 
   <div id="marker"></div>
   <div id="status-badge">⏸ пауза</div>
-  <div id="hint">X / A — старт·стоп · стік — перемотка · R1/L1 — швидкість</div>
+  <div id="hint">X/A — старт·стоп · стік — перемотка · R1/L1 — швидкість</div>
 
   <div id="progress-bar">
     <div id="progress-fill"></div>
@@ -361,73 +374,133 @@
 
 <!-- EDIT OVERLAY -->
 <div id="edit-overlay">
-  <div id="edit-header">
-    <span>Редагування скрипту</span>
-  </div>
+  <div id="edit-header">Редагування скрипту</div>
   <textarea id="edit-ta" placeholder="Вставте або надрукуйте ваш скрипт тут..."></textarea>
   <div class="edit-actions">
     <button id="btn-cancel" onclick="closeEdit(false)">Скасувати</button>
-    <button id="btn-save" onclick="closeEdit(true)">Зберегти</button>
+    <button id="btn-save"   onclick="closeEdit(true)">Зберегти</button>
   </div>
 </div>
 
 <script>
-  const scrollArea = document.getElementById('scroll-area');
-  const scrollInner = document.getElementById('scroll-inner');
-  const teletext = document.getElementById('teletext');
-  const statusBadge = document.getElementById('status-badge');
-  const hint = document.getElementById('hint');
+  const scrollArea   = document.getElementById('scroll-area');
+  const scrollInner  = document.getElementById('scroll-inner');
+  const teletext     = document.getElementById('teletext');
+  const statusBadge  = document.getElementById('status-badge');
+  const hint         = document.getElementById('hint');
   const progressFill = document.getElementById('progress-fill');
-  const editOverlay = document.getElementById('edit-overlay');
-  const editTa = document.getElementById('edit-ta');
-  const iconPlay = document.getElementById('icon-play');
-  const iconPause = document.getElementById('icon-pause');
-  const playLabel = document.getElementById('play-label');
-  const btnPlay = document.getElementById('btn-play');
+  const editOverlay  = document.getElementById('edit-overlay');
+  const editTa       = document.getElementById('edit-ta');
+  const iconPlay     = document.getElementById('icon-play');
+  const iconPause    = document.getElementById('icon-pause');
+  const playLabel    = document.getElementById('play-label');
+  const btnPlay      = document.getElementById('btn-play');
   const speedRangeEl = document.getElementById('speed-range');
-  const speedNumEl = document.getElementById('speed-num');
+  const speedNumEl   = document.getElementById('speed-num');
 
-  let playing = false;
-  let offset = 0;
-  let speed = 3;
-  let raf = null;
-  let lastTs = null;
-  let gpLoop = null;
-  let fontSize = 28;
+  let playing  = false;
+  let offset   = 0;
+  let speed    = 3;
+  let raf      = null;
+  let lastTs   = null;
+  let gpLoop   = null;
+  let fontSize = 32;
+  let margin   = 48;
+  let mirrored = false;
 
-  // button states for gamepad debounce
   const gpState = {};
 
+  /* ── ЗБЕРЕЖЕННЯ / ЗАВАНТАЖЕННЯ ── */
+  function saveAll() {
+    try {
+      localStorage.setItem('tp_script',   teletext.innerText);
+      localStorage.setItem('tp_fontSize', fontSize);
+      localStorage.setItem('tp_margin',   margin);
+      localStorage.setItem('tp_speed',    speed);
+      localStorage.setItem('tp_mirror',   mirrored ? '1' : '0');
+    } catch(e) {}
+  }
+
+  function loadAll() {
+    try {
+      const script = localStorage.getItem('tp_script');
+      if (script) teletext.innerText = script;
+
+      const fs = parseInt(localStorage.getItem('tp_fontSize'));
+      if (fs) { fontSize = fs; teletext.style.fontSize = fontSize + 'px'; }
+
+      const mg = parseInt(localStorage.getItem('tp_margin'));
+      if (mg) {
+        margin = mg;
+        scrollInner.style.paddingLeft  = margin + 'px';
+        scrollInner.style.paddingRight = margin + 'px';
+      }
+
+      const sp = parseInt(localStorage.getItem('tp_speed'));
+      if (sp) { speed = sp; speedRangeEl.value = speed; speedNumEl.textContent = speed; }
+
+      if (localStorage.getItem('tp_mirror') === '1') {
+        mirrored = true;
+        applyMirror();
+      }
+    } catch(e) {}
+  }
+
+  /* ── СКРОЛ ── */
   function getPixelsPerFrame() { return speed * 0.55; }
 
   function maxOffset() {
-    return Math.max(0, scrollInner.offsetHeight - scrollArea.offsetHeight + 280);
+    return Math.max(0, scrollInner.scrollHeight - scrollArea.clientHeight);
   }
 
   function applyOffset(v) {
     offset = Math.max(0, Math.min(v, maxOffset()));
-    scrollInner.style.transform = `translateY(${-offset}px)`;
+    scrollArea.scrollTop = offset;
     const pct = maxOffset() > 0 ? (offset / maxOffset()) * 100 : 0;
     progressFill.style.height = pct + '%';
   }
+
+  scrollArea.addEventListener('scroll', () => {
+    offset = scrollArea.scrollTop;
+    const pct = maxOffset() > 0 ? (offset / maxOffset()) * 100 : 0;
+    progressFill.style.height = pct + '%';
+  }, { passive: true });
+
+  /* тап vs свайп */
+  let touchStartY = 0;
+  let touchStartT = 0;
+  scrollArea.addEventListener('touchstart', (e) => {
+    touchStartY = e.touches[0].clientY;
+    touchStartT = Date.now();
+  }, { passive: true });
+  scrollArea.addEventListener('touchend', (e) => {
+    const dy = Math.abs(e.changedTouches[0].clientY - touchStartY);
+    const dt = Date.now() - touchStartT;
+    if (dy < 10 && dt < 300) togglePlay();
+  }, { passive: true });
 
   function tick(ts) {
     if (!playing) return;
     if (lastTs === null) lastTs = ts;
     const dt = Math.min(ts - lastTs, 50);
     lastTs = ts;
-    applyOffset(offset + getPixelsPerFrame() * (dt / 16.67));
+    offset += getPixelsPerFrame() * (dt / 16.67);
+    offset = Math.max(0, Math.min(offset, maxOffset()));
+    scrollArea.scrollTop = offset;
+    const pct = maxOffset() > 0 ? (offset / maxOffset()) * 100 : 0;
+    progressFill.style.height = pct + '%';
     raf = requestAnimationFrame(tick);
   }
 
+  /* ── ВІДТВОРЕННЯ ── */
   function togglePlay() {
     if (editOverlay.classList.contains('open')) return;
     playing = !playing;
     if (playing) {
       lastTs = null;
-      iconPlay.style.display = 'none';
+      iconPlay.style.display  = 'none';
       iconPause.style.display = '';
-      playLabel.textContent = 'Пауза';
+      playLabel.textContent   = 'Пауза';
       btnPlay.classList.add('playing');
       statusBadge.textContent = '▶ відтворення';
       statusBadge.classList.add('playing');
@@ -435,9 +508,9 @@
       raf = requestAnimationFrame(tick);
     } else {
       cancelAnimationFrame(raf);
-      iconPlay.style.display = '';
+      iconPlay.style.display  = '';
       iconPause.style.display = 'none';
-      playLabel.textContent = 'Старт';
+      playLabel.textContent   = 'Старт';
       btnPlay.classList.remove('playing');
       statusBadge.textContent = '⏸ пауза';
       statusBadge.classList.remove('playing');
@@ -447,15 +520,43 @@
 
   function setSpeed(v) {
     speed = parseInt(v);
-    speedRangeEl.value = speed;
+    speedRangeEl.value     = speed;
     speedNumEl.textContent = speed;
+    saveAll();
   }
 
   function changeFontSize(delta) {
-    fontSize = Math.max(16, Math.min(52, fontSize + delta));
+    fontSize = Math.max(16, Math.min(64, fontSize + delta));
     teletext.style.fontSize = fontSize + 'px';
+    saveAll();
   }
 
+  function changeMargin(delta) {
+    margin = Math.max(8, Math.min(120, margin + delta));
+    scrollInner.style.paddingLeft  = margin + 'px';
+    scrollInner.style.paddingRight = margin + 'px';
+    saveAll();
+  }
+
+  /* ── ДЗЕРКАЛО ── */
+  function applyMirror() {
+    const btnMirror = document.getElementById('btn-mirror');
+    if (mirrored) {
+      scrollInner.style.transform = 'scaleX(-1)';
+      btnMirror.classList.add('active');
+    } else {
+      scrollInner.style.transform = 'none';
+      btnMirror.classList.remove('active');
+    }
+  }
+
+  function toggleMirror() {
+    mirrored = !mirrored;
+    applyMirror();
+    saveAll();
+  }
+
+  /* ── РЕДАКТОР ── */
   function openEdit() {
     if (playing) togglePlay();
     editTa.value = teletext.innerText;
@@ -466,60 +567,102 @@
   function closeEdit(save) {
     if (save && editTa.value.trim()) {
       teletext.innerText = editTa.value;
-      applyOffset(0);
+      offset = 0;
+      scrollArea.scrollTop = 0;
+      progressFill.style.height = '0%';
+      saveAll();
     }
     editOverlay.classList.remove('open');
   }
 
-  // ── GAMEPAD ──
+  /* ── GAMEPAD ── */
   function wasPressed(id, val) {
     const prev = gpState[id] || false;
     gpState[id] = val;
     return val && !prev;
   }
 
+  let scrollTarget = 0;
+  let scrolling = false;
+
+  function smoothScrollTo(target) {
+    scrollTarget = Math.max(0, Math.min(target, maxOffset()));
+    if (scrolling) return;
+    scrolling = true;
+    function step() {
+      const diff = scrollTarget - scrollArea.scrollTop;
+      if (Math.abs(diff) < 0.5) {
+        scrollArea.scrollTop = scrollTarget;
+        offset = scrollTarget;
+        progressFill.style.height = (maxOffset() > 0 ? (offset / maxOffset()) * 100 : 0) + '%';
+        scrolling = false;
+        return;
+      }
+      scrollArea.scrollTop += diff * 0.18;
+      offset = scrollArea.scrollTop;
+      progressFill.style.height = (maxOffset() > 0 ? (offset / maxOffset()) * 100 : 0) + '%';
+      requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+
+  function oneLineHeight() {
+    return Math.round(fontSize * 1.5);
+  }
+
+  let dpadCooldown = 0;
+  const DPAD_FIRST_DELAY = 300;
+  const DPAD_REPEAT      = 120;
+  let dpadHoldStart = { up: 0, down: 0 };
+
   function pollGamepad() {
+    const now = performance.now();
     const gpads = navigator.getGamepads ? navigator.getGamepads() : [];
     for (const gp of gpads) {
       if (!gp) continue;
 
-      // X (PS) / A (Xbox) = button 0
-      if (wasPressed('x', gp.buttons[0]?.pressed)) togglePlay();
+      if (wasPressed('x',  gp.buttons[0]?.pressed)) togglePlay();
+      if (wasPressed('r1', gp.buttons[5]?.pressed)) setSpeed(Math.min(10, speed + 1));
+      if (wasPressed('l1', gp.buttons[4]?.pressed)) setSpeed(Math.max(1,  speed - 1));
 
-      // R1/RB = button 5 → faster
-      if (wasPressed('r1', gp.buttons[5]?.pressed)) {
-        setSpeed(Math.min(10, speed + 1));
-      }
-      // L1/LB = button 4 → slower
-      if (wasPressed('l1', gp.buttons[4]?.pressed)) {
-        setSpeed(Math.max(1, speed - 1));
-      }
-
-      // D-pad up/down = buttons 12/13
-      const dUp = gp.buttons[12]?.pressed;
-      const dDown = gp.buttons[13]?.pressed;
-
-      // Left stick Y = axes[1], Right stick Y = axes[3]
+      const dUp    = gp.buttons[12]?.pressed;
+      const dDown  = gp.buttons[13]?.pressed;
       const stickY = gp.axes[1] || 0;
+      const stickActive = Math.abs(stickY) > 0.15;
 
-      let scrollDelta = 0;
-      if (Math.abs(stickY) > 0.15) scrollDelta = stickY * 10;
-      if (dUp) scrollDelta = -10;
-      if (dDown) scrollDelta = 10;
-
-      if (Math.abs(scrollDelta) > 0) {
+      if (stickActive) {
         if (playing) togglePlay();
-        applyOffset(offset + scrollDelta * 2.5);
+        smoothScrollTo(scrollTarget + stickY * oneLineHeight() * 0.35);
+      }
+
+      if (dUp || dDown) {
+        if (playing) togglePlay();
+        const dir = dUp ? -1 : 1;
+        const holdKey  = dUp ? 'up' : 'down';
+        const otherKey = dUp ? 'down' : 'up';
+
+        if (dpadHoldStart[holdKey] === 0) {
+          dpadHoldStart[holdKey] = now;
+          smoothScrollTo(scrollTarget + dir * oneLineHeight());
+        } else {
+          const held = now - dpadHoldStart[holdKey];
+          if (held > DPAD_FIRST_DELAY && now - dpadCooldown > DPAD_REPEAT) {
+            dpadCooldown = now;
+            smoothScrollTo(scrollTarget + dir * oneLineHeight());
+          }
+        }
+        dpadHoldStart[otherKey] = 0;
+      } else {
+        dpadHoldStart.up = 0;
+        dpadHoldStart.down = 0;
       }
     }
     gpLoop = requestAnimationFrame(pollGamepad);
   }
 
-  window.addEventListener('gamepadconnected', (e) => {
+  window.addEventListener('gamepadconnected', () => {
     statusBadge.textContent = '🎮 підключено';
-    setTimeout(() => {
-      if (!playing) statusBadge.textContent = '⏸ пауза';
-    }, 2500);
+    setTimeout(() => { if (!playing) statusBadge.textContent = '⏸ пауза'; }, 2500);
     if (!gpLoop) pollGamepad();
   });
 
@@ -528,18 +671,18 @@
     if (!playing) statusBadge.textContent = '⏸ пауза';
   });
 
-  // Start polling immediately (iOS sometimes doesn't fire gamepadconnected)
   pollGamepad();
 
-  // Keyboard shortcuts (useful for testing on desktop)
   document.addEventListener('keydown', (e) => {
     if (editOverlay.classList.contains('open')) return;
-    if (e.code === 'Space') { e.preventDefault(); togglePlay(); }
-    if (e.code === 'ArrowUp') { e.preventDefault(); if (playing) togglePlay(); applyOffset(offset - 60); }
-    if (e.code === 'ArrowDown') { e.preventDefault(); if (playing) togglePlay(); applyOffset(offset + 60); }
-    if (e.code === 'BracketRight') setSpeed(Math.min(10, speed + 1));
-    if (e.code === 'BracketLeft') setSpeed(Math.max(1, speed - 1));
+    if (e.code === 'Space')        { e.preventDefault(); togglePlay(); }
+    if (e.code === 'ArrowUp')      { e.preventDefault(); if (playing) togglePlay(); applyOffset(offset - 80); }
+    if (e.code === 'ArrowDown')    { e.preventDefault(); if (playing) togglePlay(); applyOffset(offset + 80); }
+    if (e.code === 'BracketRight')  setSpeed(Math.min(10, speed + 1));
+    if (e.code === 'BracketLeft')   setSpeed(Math.max(1,  speed - 1));
   });
+
+  loadAll();
 </script>
 </body>
 </html>
