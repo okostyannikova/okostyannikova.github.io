@@ -346,7 +346,11 @@
 
 X / A → Старт та Стоп
 
-Стік / хрестовина → перемотка (по одній лінії)
+○ (коло) → перемотка вперед
+
+□ (квадрат) → перемотка назад
+
+Правий стік → плавна перемотка
 
 R1 → швидше
 
@@ -365,7 +369,7 @@ A+ A− → розмір шрифту
 
   <div id="marker"></div>
   <div id="status-badge">⏸ пауза</div>
-  <div id="hint">X/A — старт·стоп · стік — перемотка · R1/L1 — швидкість</div>
+  <div id="hint">X/A — старт·стоп · ○ вперед · □ назад · R1/L1 — швидкість</div>
 
   <div id="progress-bar">
     <div id="progress-fill"></div>
@@ -467,6 +471,17 @@ A+ A− → розмір шрифту
   }, { passive: true });
 
   /* тап vs свайп */
+  let touchStartY = 0;
+  let touchStartT = 0;
+  scrollArea.addEventListener('touchstart', (e) => {
+    touchStartY = e.touches[0].clientY;
+    touchStartT = Date.now();
+  }, { passive: true });
+  scrollArea.addEventListener('touchend', (e) => {
+    const dy = Math.abs(e.changedTouches[0].clientY - touchStartY);
+    const dt = Date.now() - touchStartT;
+    if (dy < 10 && dt < 300) togglePlay();
+  }, { passive: true });
   let touchStartY = 0;
   let touchStartT = 0;
   scrollArea.addEventListener('touchstart', (e) => {
@@ -586,6 +601,8 @@ A+ A− → розмір шрифту
   let scrolling = false;
 
   function smoothScrollTo(target) {
+    /* завжди синхронізуємо ціль з реальним scrollTop перед рухом */
+    const current = scrollArea.scrollTop;
     scrollTarget = Math.max(0, Math.min(target, maxOffset()));
     if (scrolling) return;
     scrolling = true;
@@ -606,6 +623,9 @@ A+ A− → розмір шрифту
     requestAnimationFrame(step);
   }
 
+  /* синхронізуємо scrollTarget коли користувач скролить пальцем —
+     робиться через основний scroll listener вище */
+
   function oneLineHeight() {
     return Math.round(fontSize * 1.5);
   }
@@ -613,7 +633,7 @@ A+ A− → розмір шрифту
   let dpadCooldown = 0;
   const DPAD_FIRST_DELAY = 300;
   const DPAD_REPEAT      = 120;
-  let dpadHoldStart = { up: 0, down: 0 };
+  let btnHoldStart = { back: 0, fwd: 0 };
 
   function pollGamepad() {
     const now = performance.now();
@@ -621,40 +641,51 @@ A+ A− → розмір шрифту
     for (const gp of gpads) {
       if (!gp) continue;
 
+      /* X/A (button 0) → старт/стоп */
       if (wasPressed('x',  gp.buttons[0]?.pressed)) togglePlay();
+
+      /* R1 (button 5) → швидше, L1 (button 4) → повільніше */
       if (wasPressed('r1', gp.buttons[5]?.pressed)) setSpeed(Math.min(10, speed + 1));
       if (wasPressed('l1', gp.buttons[4]?.pressed)) setSpeed(Math.max(1,  speed - 1));
 
-      const dUp    = gp.buttons[12]?.pressed;
-      const dDown  = gp.buttons[13]?.pressed;
-      const stickY = gp.axes[1] || 0;
+      /* Квадрат (button 2) → назад, Коло (button 1) → вперед */
+      const btnBack = gp.buttons[2]?.pressed;  /* квадрат */
+      const btnFwd  = gp.buttons[1]?.pressed;  /* коло    */
+
+      /* Правий стік Y (axes[3]) → перемотка */
+      const stickY = gp.axes[3] || 0;
       const stickActive = Math.abs(stickY) > 0.15;
 
       if (stickActive) {
         if (playing) togglePlay();
+        /* синхронізуємо ціль з реальним положенням перед рухом */
+        scrollTarget = scrollArea.scrollTop;
         smoothScrollTo(scrollTarget + stickY * oneLineHeight() * 0.35);
       }
 
-      if (dUp || dDown) {
+      /* кнопки з авто-повтором при утриманні */
+      if (btnBack || btnFwd) {
         if (playing) togglePlay();
-        const dir = dUp ? -1 : 1;
-        const holdKey  = dUp ? 'up' : 'down';
-        const otherKey = dUp ? 'down' : 'up';
+        const dir      = btnBack ? -1 : 1;
+        const holdKey  = btnBack ? 'back' : 'fwd';
+        const otherKey = btnBack ? 'fwd' : 'back';
 
-        if (dpadHoldStart[holdKey] === 0) {
-          dpadHoldStart[holdKey] = now;
+        if (btnHoldStart[holdKey] === 0) {
+          /* перше натискання — синхронізуємо ціль і робимо крок */
+          btnHoldStart[holdKey] = now;
+          scrollTarget = scrollArea.scrollTop;
           smoothScrollTo(scrollTarget + dir * oneLineHeight());
         } else {
-          const held = now - dpadHoldStart[holdKey];
+          const held = now - btnHoldStart[holdKey];
           if (held > DPAD_FIRST_DELAY && now - dpadCooldown > DPAD_REPEAT) {
             dpadCooldown = now;
             smoothScrollTo(scrollTarget + dir * oneLineHeight());
           }
         }
-        dpadHoldStart[otherKey] = 0;
+        btnHoldStart[otherKey] = 0;
       } else {
-        dpadHoldStart.up = 0;
-        dpadHoldStart.down = 0;
+        btnHoldStart.back = 0;
+        btnHoldStart.fwd  = 0;
       }
     }
     gpLoop = requestAnimationFrame(pollGamepad);
