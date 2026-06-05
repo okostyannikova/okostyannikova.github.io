@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="Телепромптер">
+<title>Телепромптер</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&display=swap');
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  :root {
+    --bg: #0a0a0a;
+    --text: #f0ede4;
+    --accent: #c8a84b;
+    --dim: rgba(240,237,228,0.35);
+    --toolbar-h: 56px;
+  }
+
+  html, body {
+    height: 100%;
+    overflow: hidden;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Courier Prime', 'Courier New', monospace;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  /* ── TOOLBAR ── */
+  #toolbar {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: var(--toolbar-h);
+    z-index: 100;
+    background: rgba(10,10,10,0.92);
+    border-bottom: 1px solid rgba(200,168,75,0.2);
+    display: flex;
+    align-items: center;
+    gap: 0;
+    padding: 0 8px;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  .tb-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 6px 10px;
+    background: none;
+    border: none;
+    color: var(--dim);
+    font-family: 'Courier Prime', monospace;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: color 0.2s;
+    min-width: 44px;
+    min-height: 44px;
+    justify-content: center;
+  }
+  .tb-btn svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+  .tb-btn:active { transform: scale(0.93); }
+  .tb-btn.active, .tb-btn:hover { color: var(--accent); }
+
+  #btn-play.playing { color: var(--accent); }
+
+  /* speed control */
+  #speed-section {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding-right: 4px;
+  }
+  #speed-label { font-size: 10px; color: var(--dim); letter-spacing: 0.08em; text-transform: uppercase; }
+  #speed-range {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 72px;
+    height: 3px;
+    background: rgba(200,168,75,0.2);
+    border-radius: 2px;
+    outline: none;
+  }
+  #speed-range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+  }
+  #speed-num { font-size: 12px; color: var(--text); min-width: 16px; text-align: right; }
+
+  /* ── READING AREA ── */
+  #scroll-area {
+    position: fixed;
+    top: var(--toolbar-h);
+    left: 0; right: 0;
+    bottom: 0;
+    overflow: hidden;
+    cursor: pointer;
+  }
+
+  /* gradient fades at top/bottom */
+  #scroll-area::before, #scroll-area::after {
+    content: '';
+    position: absolute;
+    left: 0; right: 0;
+    height: 80px;
+    z-index: 10;
+    pointer-events: none;
+  }
+  #scroll-area::before {
+    top: 0;
+    background: linear-gradient(to bottom, var(--bg), transparent);
+  }
+  #scroll-area::after {
+    bottom: 0;
+    background: linear-gradient(to top, var(--bg), transparent);
+  }
+
+  #scroll-inner {
+    padding: 60px 28px 400px;
+    will-change: transform;
+    transition: none;
+  }
+
+  #teletext {
+    font-size: 28px;
+    line-height: 1.7;
+    color: var(--text);
+    white-space: pre-wrap;
+    word-break: break-word;
+    letter-spacing: 0.01em;
+  }
+
+  /* reading marker */
+  #marker {
+    position: absolute;
+    top: 50%;
+    left: 0; right: 0;
+    height: 1px;
+    background: rgba(200,168,75,0.4);
+    pointer-events: none;
+    z-index: 5;
+    transform: translateY(-50%);
+  }
+  #marker::before {
+    content: '';
+    position: absolute;
+    left: 0; top: -3px;
+    width: 6px; height: 7px;
+    background: var(--accent);
+    clip-path: polygon(0 0, 100% 50%, 0 100%);
+  }
+  #marker::after {
+    content: '';
+    position: absolute;
+    right: 0; top: -3px;
+    width: 6px; height: 7px;
+    background: var(--accent);
+    clip-path: polygon(100% 0, 0 50%, 100% 100%);
+  }
+
+  /* status badge */
+  #status-badge {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    z-index: 20;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--dim);
+    pointer-events: none;
+    transition: color 0.3s;
+  }
+  #status-badge.playing { color: var(--accent); }
+
+  /* controller hint */
+  #hint {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 20;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: rgba(200,168,75,0.3);
+    white-space: nowrap;
+    pointer-events: none;
+    transition: opacity 0.5s;
+  }
+
+  /* ── EDIT OVERLAY ── */
+  #edit-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    background: rgba(10,10,10,0.96);
+    flex-direction: column;
+    padding: 16px;
+    gap: 12px;
+  }
+  #edit-overlay.open { display: flex; }
+
+  #edit-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(200,168,75,0.15);
+  }
+  #edit-header span { font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); }
+
+  #edit-ta {
+    flex: 1;
+    background: rgba(240,237,228,0.04);
+    border: 1px solid rgba(200,168,75,0.2);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: 'Courier Prime', monospace;
+    font-size: 16px;
+    line-height: 1.6;
+    padding: 14px;
+    resize: none;
+    outline: none;
+    -webkit-user-select: text;
+    user-select: text;
+  }
+  #edit-ta:focus { border-color: rgba(200,168,75,0.5); }
+
+  .edit-actions { display: flex; gap: 10px; }
+  .edit-actions button {
+    flex: 1;
+    padding: 13px;
+    border-radius: 8px;
+    font-family: 'Courier Prime', monospace;
+    font-size: 13px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
+    border: 1px solid rgba(200,168,75,0.3);
+    transition: all 0.2s;
+  }
+  #btn-save { background: var(--accent); color: #0a0a0a; border-color: var(--accent); font-weight: 700; }
+  #btn-cancel { background: transparent; color: var(--dim); }
+
+  /* font size controls */
+  #font-controls {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    margin-left: 4px;
+  }
+  .font-btn {
+    min-width: 36px;
+    min-height: 36px;
+    padding: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(240,237,228,0.05);
+    border: 1px solid rgba(200,168,75,0.15);
+    border-radius: 6px;
+    color: var(--dim);
+    font-family: 'Courier Prime', monospace;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .font-btn:active { color: var(--accent); border-color: var(--accent); }
+
+  #progress-bar {
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 2px;
+    z-index: 15;
+    pointer-events: none;
+  }
+  #progress-fill {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    background: rgba(200,168,75,0.4);
+    transition: height 0.1s linear;
+  }
+</style>
+</head>
+<body>
+
+<!-- TOOLBAR -->
+<div id="toolbar">
+  <button class="tb-btn" id="btn-play" onclick="togglePlay()" aria-label="Старт/Пауза">
+    <svg id="icon-play" viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>
+    <svg id="icon-pause" viewBox="0 0 24 24" style="display:none"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+    <span id="play-label">Старт</span>
+  </button>
+
+  <button class="tb-btn" id="btn-edit" onclick="openEdit()" aria-label="Редагувати текст">
+    <svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+    <span>Текст</span>
+  </button>
+
+  <div id="font-controls">
+    <button class="font-btn" onclick="changeFontSize(-2)" aria-label="Зменшити шрифт">A−</button>
+    <button class="font-btn" onclick="changeFontSize(2)" aria-label="Збільшити шрифт">A+</button>
+  </div>
+
+  <div id="speed-section">
+    <span id="speed-label">▶▶</span>
+    <input type="range" id="speed-range" min="1" max="10" value="3" step="1" oninput="setSpeed(this.value)">
+    <span id="speed-num">3</span>
+  </div>
+</div>
+
+<!-- SCROLL AREA -->
+<div id="scroll-area" onclick="togglePlay()">
+  <div id="scroll-inner">
+    <div id="teletext">Вставте ваш скрипт через кнопку «Текст» вгорі.
+
+Потім натисніть «Старт» або кнопку X / A на джойстику щоб почати прокрутку.
+
+──────────────────
+
+Керування джойстиком:
+
+  X / A  →  Старт та Стоп
+
+  Стік або хрестовина вгору  →  перемотати назад
+
+  Стік або хрестовина вниз  →  перемотати вперед
+
+  R1 / RB  →  швидше
+
+  L1 / LB  →  повільніше
+
+──────────────────
+
+Жовта лінія посередині — місце читання.
+
+Кнопки A+ та A− змінюють розмір тексту.
+
+Гарної зйомки!</div>
+  </div>
+
+  <div id="marker"></div>
+  <div id="status-badge">⏸ пауза</div>
+  <div id="hint">X / A — старт·стоп · стік — перемотка · R1/L1 — швидкість</div>
+
+  <div id="progress-bar">
+    <div id="progress-fill"></div>
+  </div>
+</div>
+
+<!-- EDIT OVERLAY -->
+<div id="edit-overlay">
+  <div id="edit-header">
+    <span>Редагування скрипту</span>
+  </div>
+  <textarea id="edit-ta" placeholder="Вставте або надрукуйте ваш скрипт тут..."></textarea>
+  <div class="edit-actions">
+    <button id="btn-cancel" onclick="closeEdit(false)">Скасувати</button>
+    <button id="btn-save" onclick="closeEdit(true)">Зберегти</button>
+  </div>
+</div>
+
+<script>
+  const scrollArea = document.getElementById('scroll-area');
+  const scrollInner = document.getElementById('scroll-inner');
+  const teletext = document.getElementById('teletext');
+  const statusBadge = document.getElementById('status-badge');
+  const hint = document.getElementById('hint');
+  const progressFill = document.getElementById('progress-fill');
+  const editOverlay = document.getElementById('edit-overlay');
+  const editTa = document.getElementById('edit-ta');
+  const iconPlay = document.getElementById('icon-play');
+  const iconPause = document.getElementById('icon-pause');
+  const playLabel = document.getElementById('play-label');
+  const btnPlay = document.getElementById('btn-play');
+  const speedRangeEl = document.getElementById('speed-range');
+  const speedNumEl = document.getElementById('speed-num');
+
+  let playing = false;
+  let offset = 0;
+  let speed = 3;
+  let raf = null;
+  let lastTs = null;
+  let gpLoop = null;
+  let fontSize = 28;
+
+  // button states for gamepad debounce
+  const gpState = {};
+
+  function getPixelsPerFrame() { return speed * 0.55; }
+
+  function maxOffset() {
+    return Math.max(0, scrollInner.offsetHeight - scrollArea.offsetHeight + 280);
+  }
+
+  function applyOffset(v) {
+    offset = Math.max(0, Math.min(v, maxOffset()));
+    scrollInner.style.transform = `translateY(${-offset}px)`;
+    const pct = maxOffset() > 0 ? (offset / maxOffset()) * 100 : 0;
+    progressFill.style.height = pct + '%';
+  }
+
+  function tick(ts) {
+    if (!playing) return;
+    if (lastTs === null) lastTs = ts;
+    const dt = Math.min(ts - lastTs, 50);
+    lastTs = ts;
+    applyOffset(offset + getPixelsPerFrame() * (dt / 16.67));
+    raf = requestAnimationFrame(tick);
+  }
+
+  function togglePlay() {
+    if (editOverlay.classList.contains('open')) return;
+    playing = !playing;
+    if (playing) {
+      lastTs = null;
+      iconPlay.style.display = 'none';
+      iconPause.style.display = '';
+      playLabel.textContent = 'Пауза';
+      btnPlay.classList.add('playing');
+      statusBadge.textContent = '▶ відтворення';
+      statusBadge.classList.add('playing');
+      hint.style.opacity = '0';
+      raf = requestAnimationFrame(tick);
+    } else {
+      cancelAnimationFrame(raf);
+      iconPlay.style.display = '';
+      iconPause.style.display = 'none';
+      playLabel.textContent = 'Старт';
+      btnPlay.classList.remove('playing');
+      statusBadge.textContent = '⏸ пауза';
+      statusBadge.classList.remove('playing');
+      hint.style.opacity = '1';
+    }
+  }
+
+  function setSpeed(v) {
+    speed = parseInt(v);
+    speedRangeEl.value = speed;
+    speedNumEl.textContent = speed;
+  }
+
+  function changeFontSize(delta) {
+    fontSize = Math.max(16, Math.min(52, fontSize + delta));
+    teletext.style.fontSize = fontSize + 'px';
+  }
+
+  function openEdit() {
+    if (playing) togglePlay();
+    editTa.value = teletext.innerText;
+    editOverlay.classList.add('open');
+    setTimeout(() => editTa.focus(), 100);
+  }
+
+  function closeEdit(save) {
+    if (save && editTa.value.trim()) {
+      teletext.innerText = editTa.value;
+      applyOffset(0);
+    }
+    editOverlay.classList.remove('open');
+  }
+
+  // ── GAMEPAD ──
+  function wasPressed(id, val) {
+    const prev = gpState[id] || false;
+    gpState[id] = val;
+    return val && !prev;
+  }
+
+  function pollGamepad() {
+    const gpads = navigator.getGamepads ? navigator.getGamepads() : [];
+    for (const gp of gpads) {
+      if (!gp) continue;
+
+      // X (PS) / A (Xbox) = button 0
+      if (wasPressed('x', gp.buttons[0]?.pressed)) togglePlay();
+
+      // R1/RB = button 5 → faster
+      if (wasPressed('r1', gp.buttons[5]?.pressed)) {
+        setSpeed(Math.min(10, speed + 1));
+      }
+      // L1/LB = button 4 → slower
+      if (wasPressed('l1', gp.buttons[4]?.pressed)) {
+        setSpeed(Math.max(1, speed - 1));
+      }
+
+      // D-pad up/down = buttons 12/13
+      const dUp = gp.buttons[12]?.pressed;
+      const dDown = gp.buttons[13]?.pressed;
+
+      // Left stick Y = axes[1], Right stick Y = axes[3]
+      const stickY = gp.axes[1] || 0;
+
+      let scrollDelta = 0;
+      if (Math.abs(stickY) > 0.15) scrollDelta = stickY * 10;
+      if (dUp) scrollDelta = -10;
+      if (dDown) scrollDelta = 10;
+
+      if (Math.abs(scrollDelta) > 0) {
+        if (playing) togglePlay();
+        applyOffset(offset + scrollDelta * 2.5);
+      }
+    }
+    gpLoop = requestAnimationFrame(pollGamepad);
+  }
+
+  window.addEventListener('gamepadconnected', (e) => {
+    statusBadge.textContent = '🎮 підключено';
+    setTimeout(() => {
+      if (!playing) statusBadge.textContent = '⏸ пауза';
+    }, 2500);
+    if (!gpLoop) pollGamepad();
+  });
+
+  window.addEventListener('gamepaddisconnected', () => {
+    if (gpLoop) { cancelAnimationFrame(gpLoop); gpLoop = null; }
+    if (!playing) statusBadge.textContent = '⏸ пауза';
+  });
+
+  // Start polling immediately (iOS sometimes doesn't fire gamepadconnected)
+  pollGamepad();
+
+  // Keyboard shortcuts (useful for testing on desktop)
+  document.addEventListener('keydown', (e) => {
+    if (editOverlay.classList.contains('open')) return;
+    if (e.code === 'Space') { e.preventDefault(); togglePlay(); }
+    if (e.code === 'ArrowUp') { e.preventDefault(); if (playing) togglePlay(); applyOffset(offset - 60); }
+    if (e.code === 'ArrowDown') { e.preventDefault(); if (playing) togglePlay(); applyOffset(offset + 60); }
+    if (e.code === 'BracketRight') setSpeed(Math.min(10, speed + 1));
+    if (e.code === 'BracketLeft') setSpeed(Math.max(1, speed - 1));
+  });
+</script>
+</body>
+</html>
