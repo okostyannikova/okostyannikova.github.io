@@ -128,7 +128,15 @@
     background: var(--accent);
     cursor: pointer;
   }
-  #speed-num { font-size: 11px; color: var(--text); min-width: 14px; text-align: right; }
+  #speed-range::-moz-range-thumb {
+    width: 18px; height: 18px;
+    border: none;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+  }
+  #speed-num { font-size: 11px; color: var(--text); min-width: 22px; text-align: right; }
+  #speed-num.auto { color: var(--accent); }
 
   /* ── READING AREA ── */
   #scroll-area {
@@ -138,6 +146,11 @@
     overflow-y: scroll;
     -webkit-overflow-scrolling: touch;
     cursor: pointer;
+  }
+  /* фокус-режим: підсвічуємо центр, край тексту приглушуємо */
+  #scroll-area.focus {
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 28%, #000 72%, transparent 100%);
+    mask-image: linear-gradient(to bottom, transparent 0%, #000 28%, #000 72%, transparent 100%);
   }
 
   #scroll-area::before, #scroll-area::after {
@@ -234,6 +247,22 @@
     background: rgba(200,168,75,0.45);
   }
 
+  /* ── COUNTDOWN ── */
+  #countdown {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 300;
+    align-items: center;
+    justify-content: center;
+    background: rgba(10,10,10,0.55);
+    color: var(--accent);
+    font-size: 26vh;
+    font-weight: 700;
+    pointer-events: none;
+  }
+  #countdown.show { display: flex; }
+
   /* ── EDIT OVERLAY ── */
   #edit-overlay {
     display: none;
@@ -248,6 +277,10 @@
   #edit-overlay.open { display: flex; }
 
   #edit-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
     padding-bottom: 10px;
     border-bottom: 1px solid rgba(200,168,75,0.15);
     font-size: 11px;
@@ -255,6 +288,39 @@
     text-transform: uppercase;
     color: var(--accent);
   }
+
+  #script-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  #script-select {
+    flex: 1;
+    min-width: 120px;
+    background: rgba(240,237,228,0.04);
+    border: 1px solid rgba(200,168,75,0.2);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: Verdana, sans-serif;
+    font-size: 12px;
+    padding: 8px;
+    outline: none;
+  }
+  .mini-btn {
+    padding: 8px 10px;
+    border-radius: 6px;
+    background: rgba(240,237,228,0.05);
+    border: 1px solid rgba(200,168,75,0.2);
+    color: var(--dim);
+    font-family: Verdana, sans-serif;
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .mini-btn:active { color: var(--accent); border-color: var(--accent); }
 
   #edit-ta {
     flex: 1;
@@ -295,39 +361,72 @@
 <!-- TOOLBAR -->
 <div id="toolbar">
 
-  <button class="tb-btn" id="btn-play" onclick="togglePlay()" aria-label="Старт/Пауза">
+  <button class="tb-btn" id="btn-play" aria-label="Старт/Пауза">
     <svg id="icon-play" viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>
     <svg id="icon-pause" viewBox="0 0 24 24" style="display:none"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
     <span id="play-label">Старт</span>
   </button>
 
-  <button class="tb-btn" id="btn-edit" onclick="openEdit()" aria-label="Текст">
+  <button class="tb-btn" id="btn-edit" aria-label="Текст">
     <svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
     <span>Текст</span>
   </button>
 
-  <div class="tb-sep"></div>
-
-  <button class="icon-btn" onclick="changeFontSize(-2)" aria-label="Менший шрифт">A−</button>
-  <button class="icon-btn" onclick="changeFontSize(2)"  aria-label="Більший шрифт">A+</button>
-
-  <div class="tb-sep"></div>
-
-  <button class="icon-btn" onclick="changeMargin(8)"  aria-label="Ширші поля">←|</button>
-  <button class="icon-btn" onclick="changeMargin(-8)" aria-label="Вужчі поля">|→</button>
+  <button class="tb-btn" id="btn-reset" aria-label="До початку">
+    <svg viewBox="0 0 24 24"><polyline points="11 17 6 12 11 7"/><polyline points="18 17 13 12 18 7"/></svg>
+    <span>Початок</span>
+  </button>
 
   <div class="tb-sep"></div>
 
-  <button class="tb-btn" id="btn-mirror" onclick="toggleMirror()" aria-label="Відзеркалення">
+  <button class="icon-btn" id="btn-font-dec" aria-label="Менший шрифт">A−</button>
+  <button class="icon-btn" id="btn-font-inc" aria-label="Більший шрифт">A+</button>
+
+  <div class="tb-sep"></div>
+
+  <button class="icon-btn" id="btn-margin-wide"   aria-label="Ширші поля">←|</button>
+  <button class="icon-btn" id="btn-margin-narrow" aria-label="Вужчі поля">|→</button>
+
+  <div class="tb-sep"></div>
+
+  <button class="icon-btn" id="btn-lh-dec" aria-label="Менший інтервал">↕−</button>
+  <button class="icon-btn" id="btn-lh-inc" aria-label="Більший інтервал">↕+</button>
+
+  <div class="tb-sep"></div>
+
+  <button class="tb-btn" id="btn-mirror" aria-label="Відзеркалення по горизонталі">
     <svg viewBox="0 0 24 24"><path d="M12 3v18"/><path d="M5 7l4-4 4 4"/><path d="M5 17l4 4 4-4"/><path d="M19 7l-4-4-4 4"/><path d="M19 17l-4 4-4-4"/></svg>
     <span>Дзерк.</span>
+  </button>
+
+  <button class="tb-btn" id="btn-mirror-v" aria-label="Відзеркалення по вертикалі">
+    <svg viewBox="0 0 24 24" style="transform:rotate(90deg)"><path d="M12 3v18"/><path d="M5 7l4-4 4 4"/><path d="M5 17l4 4 4-4"/><path d="M19 7l-4-4-4 4"/><path d="M19 17l-4 4-4-4"/></svg>
+    <span>Верт.</span>
+  </button>
+
+  <div class="tb-sep"></div>
+
+  <button class="tb-btn" id="btn-focus" aria-label="Фокус на центрі">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M3 12h3M18 12h3M12 3v3M12 18v3"/></svg>
+    <span>Фокус</span>
+  </button>
+
+  <button class="tb-btn" id="btn-countdown" aria-label="Зворотний відлік">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2M9 2h6"/></svg>
+    <span>3·2·1</span>
+  </button>
+
+  <button class="tb-btn" id="btn-fullscreen" aria-label="На весь екран">
+    <svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+    <span>Екран</span>
   </button>
 
   <div class="tb-sep"></div>
 
   <div id="speed-section">
+    <button class="icon-btn" id="btn-timer" aria-label="Підігнати під час">⏱</button>
     <span id="speed-label">▶▶</span>
-    <input type="range" id="speed-range" min="1" max="10" value="3" step="1" oninput="setSpeed(this.value)">
+    <input type="range" id="speed-range" min="1" max="10" value="3" step="1">
     <span id="speed-num">3</span>
   </div>
 
@@ -362,7 +461,13 @@ A+ A− → розмір шрифту
 
 ←| |→ → ширина тексту
 
-Дзерк. → відзеркалення для суфлера
+↕ → міжрядковий інтервал
+
+Дзерк. / Верт. → відзеркалення для суфлера
+
+Фокус → підсвітка центру
+
+⏱ → підігнати швидкість під час
 
 Гарної зйомки!</div>
   </div>
@@ -376,344 +481,592 @@ A+ A− → розмір шрифту
   </div>
 </div>
 
+<!-- COUNTDOWN -->
+<div id="countdown"></div>
+
 <!-- EDIT OVERLAY -->
 <div id="edit-overlay">
-  <div id="edit-header">Редагування скрипту</div>
+  <div id="edit-header">
+    <span>Редагування скрипту</span>
+    <div>
+      <button class="mini-btn" id="btn-import">Імпорт .txt</button>
+      <button class="mini-btn" id="btn-export">Експорт .txt</button>
+    </div>
+  </div>
+
+  <div id="script-bar">
+    <select id="script-select" aria-label="Збережені скрипти">
+      <option value="">— збережені скрипти —</option>
+    </select>
+    <button class="mini-btn" id="btn-script-saveas">Зберегти як…</button>
+    <button class="mini-btn" id="btn-script-delete">Видалити</button>
+  </div>
+
   <textarea id="edit-ta" placeholder="Вставте або надрукуйте ваш скрипт тут..."></textarea>
+  <input type="file" id="file-input" accept=".txt,text/plain" style="display:none">
   <div class="edit-actions">
-    <button id="btn-cancel" onclick="closeEdit(false)">Скасувати</button>
-    <button id="btn-save"   onclick="closeEdit(true)">Зберегти</button>
+    <button id="btn-cancel">Скасувати</button>
+    <button id="btn-save">Зберегти</button>
   </div>
 </div>
 
 <script>
-  const scrollArea   = document.getElementById('scroll-area');
-  const scrollInner  = document.getElementById('scroll-inner');
-  const teletext     = document.getElementById('teletext');
-  const statusBadge  = document.getElementById('status-badge');
-  const hint         = document.getElementById('hint');
-  const progressFill = document.getElementById('progress-fill');
-  const editOverlay  = document.getElementById('edit-overlay');
-  const editTa       = document.getElementById('edit-ta');
-  const iconPlay     = document.getElementById('icon-play');
-  const iconPause    = document.getElementById('icon-pause');
-  const playLabel    = document.getElementById('play-label');
-  const btnPlay      = document.getElementById('btn-play');
-  const speedRangeEl = document.getElementById('speed-range');
-  const speedNumEl   = document.getElementById('speed-num');
+"use strict";
 
-  let playing  = false;
-  let offset   = 0;
-  let speed    = 3;
-  let raf      = null;
-  let lastTs   = null;
-  let gpLoop   = null;
-  let fontSize = 32;
-  let margin   = 48;
-  let mirrored = false;
+/* ── ELEMENTS ── */
+const $ = (id) => document.getElementById(id);
+const scrollArea   = $('scroll-area');
+const scrollInner  = $('scroll-inner');
+const teletext     = $('teletext');
+const statusBadge  = $('status-badge');
+const hint         = $('hint');
+const progressFill = $('progress-fill');
+const countdownEl  = $('countdown');
+const editOverlay  = $('edit-overlay');
+const editTa       = $('edit-ta');
+const fileInput    = $('file-input');
+const scriptSelect = $('script-select');
+const iconPlay     = $('icon-play');
+const iconPause    = $('icon-pause');
+const playLabel    = $('play-label');
+const btnPlay      = $('btn-play');
+const btnMirror    = $('btn-mirror');
+const btnMirrorV   = $('btn-mirror-v');
+const btnFocus     = $('btn-focus');
+const btnCountdown = $('btn-countdown');
+const speedRangeEl = $('speed-range');
+const speedNumEl   = $('speed-num');
 
-  const gpState = {};
+/* ── CONSTANTS ── */
+const SPEED_PPS        = 33;    // пікселів/сек на одиницю швидкості
+const SEEK_EASE        = 0.18;  // згладжування перемотки (0..1)
+const MAX_FRAME_DT     = 50;    // мс, кеп на крок кадру (захист від стрибків)
+const TAP_MAX_MOVE     = 10;    // px — поріг «тап проти свайп»
+const TAP_MAX_TIME     = 300;   // мс
+const STICK_DEADZONE   = 0.15;
+const STICK_GAIN       = 0.35;
+const DPAD_FIRST_DELAY = 300;   // мс до автоповтору
+const DPAD_REPEAT      = 120;   // мс між повторами
+const COUNTDOWN_FROM   = 3;
+const COUNTDOWN_STEP   = 800;   // мс на цифру
 
-  /* ── ЗБЕРЕЖЕННЯ / ЗАВАНТАЖЕННЯ ── */
-  function saveAll() {
-    try {
-      localStorage.setItem('tp_script',   teletext.innerText);
-      localStorage.setItem('tp_fontSize', fontSize);
-      localStorage.setItem('tp_margin',   margin);
-      localStorage.setItem('tp_speed',    speed);
-      localStorage.setItem('tp_mirror',   mirrored ? '1' : '0');
-    } catch(e) {}
-  }
+const FONT_MIN = 16, FONT_MAX = 64, FONT_STEP = 2;
+const MARGIN_MIN = 8, MARGIN_MAX = 120, MARGIN_STEP = 8;
+const LH_MIN = 1.0, LH_MAX = 2.6, LH_STEP = 0.1;
+const SPEED_MIN = 1, SPEED_MAX = 10;
 
-  function loadAll() {
-    try {
-      const script = localStorage.getItem('tp_script');
-      if (script) teletext.innerText = script;
+/* ── STATE ── */
+let playing    = false;
+let counting   = false;
+let offset     = 0;
+let seekTarget = null;     // null => немає активної перемотки
+let speed      = 3;
+let autoPps    = null;     // ручний px/сек з «підігнати під час»; null => за швидкістю
+let fontSize   = 32;
+let margin     = 48;
+let lineHeight = 1.5;
+let mirrorH    = false;
+let mirrorV    = false;
+let focusMode  = false;
+let countdownEnabled = false;
 
-      const fs = parseInt(localStorage.getItem('tp_fontSize'));
-      if (fs) { fontSize = fs; teletext.style.fontSize = fontSize + 'px'; }
+let animId   = null;
+let lastTs   = null;
+let gpLoop   = null;
+let suppressScroll = false;
+const gpState = {};
 
-      const mg = parseInt(localStorage.getItem('tp_margin'));
-      if (mg) {
-        margin = mg;
-        scrollInner.style.paddingLeft  = margin + 'px';
-        scrollInner.style.paddingRight = margin + 'px';
-      }
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(v, hi));
 
-      const sp = parseInt(localStorage.getItem('tp_speed'));
-      if (sp) { speed = sp; speedRangeEl.value = speed; speedNumEl.textContent = speed; }
+/* ── ЗБЕРЕЖЕННЯ / ЗАВАНТАЖЕННЯ ── */
+let saveTimer = null;
+function saveAll() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveNow, 400);
+}
+function saveNow() {
+  try {
+    localStorage.setItem('tp_script',    teletext.innerText);
+    localStorage.setItem('tp_fontSize',  fontSize);
+    localStorage.setItem('tp_margin',    margin);
+    localStorage.setItem('tp_lineHeight', lineHeight);
+    localStorage.setItem('tp_speed',     speed);
+    localStorage.setItem('tp_mirror',    mirrorH ? '1' : '0');
+    localStorage.setItem('tp_mirrorV',   mirrorV ? '1' : '0');
+    localStorage.setItem('tp_focus',     focusMode ? '1' : '0');
+    localStorage.setItem('tp_countdown', countdownEnabled ? '1' : '0');
+  } catch (e) {}
+}
 
-      if (localStorage.getItem('tp_mirror') === '1') {
-        mirrored = true;
-        applyMirror();
-      }
-    } catch(e) {}
-  }
+function loadAll() {
+  try {
+    const script = localStorage.getItem('tp_script');
+    if (script) teletext.innerText = script;
 
-  /* ── СКРОЛ ── */
-  function getPixelsPerFrame() { return speed * 0.55; }
-
-  function maxOffset() {
-    return Math.max(0, scrollInner.scrollHeight - scrollArea.clientHeight);
-  }
-
-  function applyOffset(v) {
-    offset = Math.max(0, Math.min(v, maxOffset()));
-    scrollArea.scrollTop = offset;
-    const pct = maxOffset() > 0 ? (offset / maxOffset()) * 100 : 0;
-    progressFill.style.height = pct + '%';
-  }
-
-  scrollArea.addEventListener('scroll', () => {
-    offset = scrollArea.scrollTop;
-    const pct = maxOffset() > 0 ? (offset / maxOffset()) * 100 : 0;
-    progressFill.style.height = pct + '%';
-  }, { passive: true });
-
-  /* тап vs свайп */
-  let touchStartY = 0;
-  let touchStartT = 0;
-  scrollArea.addEventListener('touchstart', (e) => {
-    touchStartY = e.touches[0].clientY;
-    touchStartT = Date.now();
-  }, { passive: true });
-  scrollArea.addEventListener('touchend', (e) => {
-    const dy = Math.abs(e.changedTouches[0].clientY - touchStartY);
-    const dt = Date.now() - touchStartT;
-    if (dy < 10 && dt < 300) togglePlay();
-  }, { passive: true });
-  let touchStartY = 0;
-  let touchStartT = 0;
-  scrollArea.addEventListener('touchstart', (e) => {
-    touchStartY = e.touches[0].clientY;
-    touchStartT = Date.now();
-  }, { passive: true });
-  scrollArea.addEventListener('touchend', (e) => {
-    const dy = Math.abs(e.changedTouches[0].clientY - touchStartY);
-    const dt = Date.now() - touchStartT;
-    if (dy < 10 && dt < 300) togglePlay();
-  }, { passive: true });
-
-  function tick(ts) {
-    if (!playing) return;
-    if (lastTs === null) lastTs = ts;
-    const dt = Math.min(ts - lastTs, 50);
-    lastTs = ts;
-    offset += getPixelsPerFrame() * (dt / 16.67);
-    offset = Math.max(0, Math.min(offset, maxOffset()));
-    scrollArea.scrollTop = offset;
-    const pct = maxOffset() > 0 ? (offset / maxOffset()) * 100 : 0;
-    progressFill.style.height = pct + '%';
-    raf = requestAnimationFrame(tick);
-  }
-
-  /* ── ВІДТВОРЕННЯ ── */
-  function togglePlay() {
-    if (editOverlay.classList.contains('open')) return;
-    playing = !playing;
-    if (playing) {
-      lastTs = null;
-      iconPlay.style.display  = 'none';
-      iconPause.style.display = '';
-      playLabel.textContent   = 'Пауза';
-      btnPlay.classList.add('playing');
-      statusBadge.textContent = '▶ відтворення';
-      statusBadge.classList.add('playing');
-      hint.style.opacity = '0';
-      raf = requestAnimationFrame(tick);
-    } else {
-      cancelAnimationFrame(raf);
-      iconPlay.style.display  = '';
-      iconPause.style.display = 'none';
-      playLabel.textContent   = 'Старт';
-      btnPlay.classList.remove('playing');
-      statusBadge.textContent = '⏸ пауза';
-      statusBadge.classList.remove('playing');
-      hint.style.opacity = '1';
-    }
-  }
-
-  function setSpeed(v) {
-    speed = parseInt(v);
-    speedRangeEl.value     = speed;
-    speedNumEl.textContent = speed;
-    saveAll();
-  }
-
-  function changeFontSize(delta) {
-    fontSize = Math.max(16, Math.min(64, fontSize + delta));
+    const fs = parseInt(localStorage.getItem('tp_fontSize'), 10);
+    if (Number.isFinite(fs)) fontSize = clamp(fs, FONT_MIN, FONT_MAX);
     teletext.style.fontSize = fontSize + 'px';
-    saveAll();
-  }
 
-  function changeMargin(delta) {
-    margin = Math.max(8, Math.min(120, margin + delta));
-    scrollInner.style.paddingLeft  = margin + 'px';
-    scrollInner.style.paddingRight = margin + 'px';
-    saveAll();
-  }
+    const mg = parseInt(localStorage.getItem('tp_margin'), 10);
+    if (Number.isFinite(mg)) margin = clamp(mg, MARGIN_MIN, MARGIN_MAX);
+    applyMargin();
 
-  /* ── ДЗЕРКАЛО ── */
-  function applyMirror() {
-    const btnMirror = document.getElementById('btn-mirror');
-    if (mirrored) {
-      scrollInner.style.transform = 'scaleX(-1)';
-      btnMirror.classList.add('active');
-    } else {
-      scrollInner.style.transform = 'none';
-      btnMirror.classList.remove('active');
-    }
-  }
+    const lh = parseFloat(localStorage.getItem('tp_lineHeight'));
+    if (Number.isFinite(lh)) lineHeight = clamp(lh, LH_MIN, LH_MAX);
+    teletext.style.lineHeight = lineHeight;
 
-  function toggleMirror() {
-    mirrored = !mirrored;
+    const sp = parseInt(localStorage.getItem('tp_speed'), 10);
+    if (Number.isFinite(sp)) speed = clamp(sp, SPEED_MIN, SPEED_MAX);
+    speedRangeEl.value = speed;
+    speedNumEl.textContent = speed;
+
+    mirrorH = localStorage.getItem('tp_mirror')  === '1';
+    mirrorV = localStorage.getItem('tp_mirrorV') === '1';
     applyMirror();
-    saveAll();
+
+    focusMode = localStorage.getItem('tp_focus') === '1';
+    applyFocus();
+
+    countdownEnabled = localStorage.getItem('tp_countdown') === '1';
+    btnCountdown.classList.toggle('active', countdownEnabled);
+  } catch (e) {}
+}
+
+/* ── СКРОЛ / ПРОГРЕС ── */
+function maxOffset() {
+  return Math.max(0, scrollInner.scrollHeight - scrollArea.clientHeight);
+}
+function updateProgress() {
+  const max = maxOffset();
+  progressFill.style.height = (max > 0 ? (offset / max) * 100 : 0) + '%';
+}
+function applyScroll(v) {
+  offset = clamp(v, 0, maxOffset());
+  suppressScroll = true;
+  scrollArea.scrollTop = offset;
+  updateProgress();
+}
+
+scrollArea.addEventListener('scroll', () => {
+  // programmatic scroll — вже оброблено в applyScroll
+  if (suppressScroll) { suppressScroll = false; return; }
+  // під час анімації керуємо рухом самі
+  if (animId !== null) return;
+  offset = scrollArea.scrollTop;
+  updateProgress();
+}, { passive: true });
+
+/* ── ЄДИНИЙ ANIMATION-LOOP ── */
+function getPps() {
+  return autoPps !== null ? autoPps : speed * SPEED_PPS;
+}
+function startLoop() {
+  if (animId === null) {
+    lastTs = null;
+    animId = requestAnimationFrame(frame);
+  }
+}
+function frame(ts) {
+  if (lastTs === null) lastTs = ts;
+  const dt = Math.min(ts - lastTs, MAX_FRAME_DT);
+  lastTs = ts;
+
+  let busy = false;
+
+  if (playing) {
+    offset += getPps() * (dt / 1000);
+    const max = maxOffset();
+    if (offset >= max) { offset = max; pausePlay(); }   // авто-пауза в кінці
+    else busy = true;
   }
 
-  /* ── РЕДАКТОР ── */
-  function openEdit() {
-    if (playing) togglePlay();
-    editTa.value = teletext.innerText;
-    editOverlay.classList.add('open');
-    setTimeout(() => editTa.focus(), 100);
-  }
-
-  function closeEdit(save) {
-    if (save && editTa.value.trim()) {
-      teletext.innerText = editTa.value;
-      offset = 0;
-      scrollArea.scrollTop = 0;
-      progressFill.style.height = '0%';
-      saveAll();
+  if (seekTarget !== null) {
+    const diff = seekTarget - offset;
+    if (Math.abs(diff) < 0.5) {
+      offset = seekTarget;
+      seekTarget = null;
+    } else {
+      offset += diff * SEEK_EASE;
+      busy = true;
     }
-    editOverlay.classList.remove('open');
   }
 
-  /* ── GAMEPAD ── */
-  function wasPressed(id, val) {
-    const prev = gpState[id] || false;
-    gpState[id] = val;
-    return val && !prev;
+  applyScroll(offset);
+
+  if (busy) {
+    animId = requestAnimationFrame(frame);
+  } else {
+    animId = null;
+    lastTs = null;
   }
+}
 
-  let scrollTarget = 0;
-  let scrolling = false;
+function seekBy(px) {
+  if (playing) pausePlay();
+  seekTarget = clamp((seekTarget !== null ? seekTarget : offset) + px, 0, maxOffset());
+  startLoop();
+}
+function seekTo(px) {
+  if (playing) pausePlay();
+  seekTarget = clamp(px, 0, maxOffset());
+  startLoop();
+}
 
-  function smoothScrollTo(target) {
-    /* завжди синхронізуємо ціль з реальним scrollTop перед рухом */
-    const current = scrollArea.scrollTop;
-    scrollTarget = Math.max(0, Math.min(target, maxOffset()));
-    if (scrolling) return;
-    scrolling = true;
-    function step() {
-      const diff = scrollTarget - scrollArea.scrollTop;
-      if (Math.abs(diff) < 0.5) {
-        scrollArea.scrollTop = scrollTarget;
-        offset = scrollTarget;
-        progressFill.style.height = (maxOffset() > 0 ? (offset / maxOffset()) * 100 : 0) + '%';
-        scrolling = false;
-        return;
-      }
-      scrollArea.scrollTop += diff * 0.18;
-      offset = scrollArea.scrollTop;
-      progressFill.style.height = (maxOffset() > 0 ? (offset / maxOffset()) * 100 : 0) + '%';
-      requestAnimationFrame(step);
+/* тап vs свайп → старт/пауза */
+let touchStartY = 0, touchStartT = 0;
+scrollArea.addEventListener('touchstart', (e) => {
+  touchStartY = e.touches[0].clientY;
+  touchStartT = Date.now();
+}, { passive: true });
+scrollArea.addEventListener('touchend', (e) => {
+  const dy = Math.abs(e.changedTouches[0].clientY - touchStartY);
+  const dt = Date.now() - touchStartT;
+  if (dy < TAP_MAX_MOVE && dt < TAP_MAX_TIME) togglePlay();
+}, { passive: true });
+
+/* ── ВІДТВОРЕННЯ ── */
+function setPlayUI(on) {
+  iconPlay.style.display  = on ? 'none' : '';
+  iconPause.style.display = on ? '' : 'none';
+  playLabel.textContent   = on ? 'Пауза' : 'Старт';
+  btnPlay.classList.toggle('playing', on);
+  statusBadge.textContent = on ? '▶ відтворення' : '⏸ пауза';
+  statusBadge.classList.toggle('playing', on);
+  hint.style.opacity = on ? '0' : '1';
+}
+
+function engagePlay() {
+  if (offset >= maxOffset()) { offset = 0; applyScroll(0); }  // з кінця — спочатку
+  playing = true;
+  setPlayUI(true);
+  requestWakeLock();
+  startLoop();
+}
+function pausePlay() {
+  playing = false;
+  setPlayUI(false);
+  releaseWakeLock();
+}
+function startPlay() {
+  if (playing || counting) return;
+  if (countdownEnabled) runCountdown(engagePlay);
+  else engagePlay();
+}
+function togglePlay() {
+  if (editOverlay.classList.contains('open') || counting) return;
+  if (playing) pausePlay();
+  else startPlay();
+}
+
+function runCountdown(done) {
+  counting = true;
+  let n = COUNTDOWN_FROM;
+  countdownEl.textContent = n;
+  countdownEl.classList.add('show');
+  const iv = setInterval(() => {
+    n--;
+    if (n <= 0) {
+      clearInterval(iv);
+      countdownEl.classList.remove('show');
+      counting = false;
+      done();
+    } else {
+      countdownEl.textContent = n;
     }
-    requestAnimationFrame(step);
+  }, COUNTDOWN_STEP);
+}
+
+/* ── НАЛАШТУВАННЯ ── */
+function setSpeed(v) {
+  speed = clamp(parseInt(v, 10) || SPEED_MIN, SPEED_MIN, SPEED_MAX);
+  autoPps = null;                     // ручна зміна вимикає авто-режим
+  speedRangeEl.value = speed;
+  speedNumEl.textContent = speed;
+  speedNumEl.classList.remove('auto');
+  saveAll();
+}
+
+function changeFontSize(delta) {
+  fontSize = clamp(fontSize + delta, FONT_MIN, FONT_MAX);
+  teletext.style.fontSize = fontSize + 'px';
+  saveAll();
+}
+
+function applyMargin() {
+  scrollInner.style.paddingLeft  = margin + 'px';
+  scrollInner.style.paddingRight = margin + 'px';
+}
+function changeMargin(delta) {
+  margin = clamp(margin + delta, MARGIN_MIN, MARGIN_MAX);
+  applyMargin();
+  saveAll();
+}
+
+function changeLineHeight(delta) {
+  lineHeight = clamp(Math.round((lineHeight + delta) * 10) / 10, LH_MIN, LH_MAX);
+  teletext.style.lineHeight = lineHeight;
+  saveAll();
+}
+
+/* ── ДЗЕРКАЛО / ФОКУС ── */
+function applyMirror() {
+  const sx = mirrorH ? -1 : 1;
+  const sy = mirrorV ? -1 : 1;
+  scrollInner.style.transform = (mirrorH || mirrorV) ? `scale(${sx}, ${sy})` : 'none';
+  btnMirror.classList.toggle('active', mirrorH);
+  btnMirrorV.classList.toggle('active', mirrorV);
+}
+function toggleMirror()  { mirrorH = !mirrorH; applyMirror(); saveAll(); }
+function toggleMirrorV() { mirrorV = !mirrorV; applyMirror(); saveAll(); }
+
+function applyFocus() { scrollArea.classList.toggle('focus', focusMode); }
+function toggleFocus() {
+  focusMode = !focusMode;
+  applyFocus();
+  btnFocus.classList.toggle('active', focusMode);
+  saveAll();
+}
+
+function toggleCountdown() {
+  countdownEnabled = !countdownEnabled;
+  btnCountdown.classList.toggle('active', countdownEnabled);
+  saveAll();
+}
+
+/* ── «ПІДІГНАТИ ПІД ЧАС» ── */
+function fitToTime() {
+  const ans = prompt('За скільки хвилин прочитати залишок?', '2');
+  if (ans === null) return;
+  const minutes = parseFloat(ans.replace(',', '.'));
+  if (!Number.isFinite(minutes) || minutes <= 0) return;
+  let remaining = maxOffset() - offset;
+  if (remaining <= 0) remaining = maxOffset();
+  if (remaining <= 0) return;
+  autoPps = remaining / (minutes * 60);
+  // показуємо приблизний еквівалент на слайдері
+  speed = clamp(Math.round(autoPps / SPEED_PPS), SPEED_MIN, SPEED_MAX);
+  speedRangeEl.value = speed;
+  speedNumEl.textContent = '⏱';
+  speedNumEl.classList.add('auto');
+  saveAll();
+  if (!playing) startPlay();
+}
+
+/* ── ПОВНОЕКРАННИЙ РЕЖИМ ── */
+function toggleFullscreen() {
+  if (!document.fullscreenElement) {
+    (document.documentElement.requestFullscreen || (() => {})).call(document.documentElement);
+  } else {
+    (document.exitFullscreen || (() => {})).call(document);
   }
+}
 
-  /* синхронізуємо scrollTarget коли користувач скролить пальцем —
-     робиться через основний scroll listener вище */
+/* ── WAKE LOCK ── */
+let wakeLock = null;
+async function requestWakeLock() {
+  try {
+    if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen');
+  } catch (e) {}
+}
+function releaseWakeLock() {
+  try { if (wakeLock) wakeLock.release(); } catch (e) {}
+  wakeLock = null;
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && playing && !wakeLock) requestWakeLock();
+});
 
-  function oneLineHeight() {
-    return Math.round(fontSize * 1.5);
+/* ── РЕДАКТОР ── */
+function openEdit() {
+  if (playing) pausePlay();
+  editTa.value = teletext.innerText;
+  refreshScriptSelect();
+  editOverlay.classList.add('open');
+  setTimeout(() => editTa.focus(), 100);
+}
+function closeEdit(save) {
+  if (save && editTa.value.trim()) {
+    teletext.innerText = editTa.value;
+    seekTarget = null;
+    applyScroll(0);
+    saveNow();
   }
+  editOverlay.classList.remove('open');
+}
 
-  let dpadCooldown = 0;
-  const DPAD_FIRST_DELAY = 300;
-  const DPAD_REPEAT      = 120;
-  let btnHoldStart = { back: 0, fwd: 0 };
+/* ── БІБЛІОТЕКА СКРИПТІВ ── */
+const SCRIPTS_KEY = 'tp_scripts';
+function getScripts() {
+  try { return JSON.parse(localStorage.getItem(SCRIPTS_KEY) || '{}'); }
+  catch (e) { return {}; }
+}
+function setScripts(obj) {
+  try { localStorage.setItem(SCRIPTS_KEY, JSON.stringify(obj)); } catch (e) {}
+}
+function refreshScriptSelect() {
+  const scripts = getScripts();
+  const names = Object.keys(scripts).sort();
+  scriptSelect.innerHTML = '<option value="">— збережені скрипти —</option>';
+  for (const name of names) {
+    const opt = document.createElement('option');
+    opt.value = name;
+    opt.textContent = name;
+    scriptSelect.appendChild(opt);
+  }
+}
+function saveScriptAs() {
+  const name = prompt('Назва для збереження скрипту:');
+  if (!name) return;
+  const scripts = getScripts();
+  scripts[name.trim()] = editTa.value;
+  setScripts(scripts);
+  refreshScriptSelect();
+  scriptSelect.value = name.trim();
+}
+function deleteScript() {
+  const name = scriptSelect.value;
+  if (!name) return;
+  if (!confirm(`Видалити скрипт «${name}»?`)) return;
+  const scripts = getScripts();
+  delete scripts[name];
+  setScripts(scripts);
+  refreshScriptSelect();
+}
 
-  function pollGamepad() {
-    const now = performance.now();
-    const gpads = navigator.getGamepads ? navigator.getGamepads() : [];
-    for (const gp of gpads) {
-      if (!gp) continue;
+/* ── ІМПОРТ / ЕКСПОРТ ── */
+function exportTxt() {
+  const blob = new Blob([teletext.innerText], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'script.txt';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+function importTxt(file) {
+  const reader = new FileReader();
+  reader.onload = () => { editTa.value = String(reader.result); };
+  reader.readAsText(file);
+}
 
-      /* X/A (button 0) → старт/стоп */
-      if (wasPressed('x',  gp.buttons[0]?.pressed)) togglePlay();
+/* ── GAMEPAD ── */
+function wasPressed(id, val) {
+  const prev = gpState[id] || false;
+  gpState[id] = val;
+  return val && !prev;
+}
+function oneLineHeight() {
+  return Math.round(fontSize * lineHeight);
+}
 
-      /* R1 (button 5) → швидше, L1 (button 4) → повільніше */
-      if (wasPressed('r1', gp.buttons[5]?.pressed)) setSpeed(Math.min(10, speed + 1));
-      if (wasPressed('l1', gp.buttons[4]?.pressed)) setSpeed(Math.max(1,  speed - 1));
+let dpadCooldown = 0;
+let btnHoldStart = { back: 0, fwd: 0 };
 
-      /* Квадрат (button 2) → назад, Коло (button 1) → вперед */
-      const btnBack = gp.buttons[2]?.pressed;  /* квадрат */
-      const btnFwd  = gp.buttons[1]?.pressed;  /* коло    */
+function pollGamepad() {
+  const now = performance.now();
+  const gpads = navigator.getGamepads ? navigator.getGamepads() : [];
+  for (const gp of gpads) {
+    if (!gp) continue;
 
-      /* Правий стік Y (axes[3]) → перемотка */
-      const stickY = gp.axes[3] || 0;
-      const stickActive = Math.abs(stickY) > 0.15;
+    if (wasPressed('x',  gp.buttons[0]?.pressed)) togglePlay();
+    if (wasPressed('r1', gp.buttons[5]?.pressed)) setSpeed(speed + 1);
+    if (wasPressed('l1', gp.buttons[4]?.pressed)) setSpeed(speed - 1);
 
-      if (stickActive) {
-        if (playing) togglePlay();
-        /* синхронізуємо ціль з реальним положенням перед рухом */
-        scrollTarget = scrollArea.scrollTop;
-        smoothScrollTo(scrollTarget + stickY * oneLineHeight() * 0.35);
-      }
+    const btnBack = gp.buttons[2]?.pressed;  // квадрат
+    const btnFwd  = gp.buttons[1]?.pressed;  // коло
 
-      /* кнопки з авто-повтором при утриманні */
-      if (btnBack || btnFwd) {
-        if (playing) togglePlay();
-        const dir      = btnBack ? -1 : 1;
-        const holdKey  = btnBack ? 'back' : 'fwd';
-        const otherKey = btnBack ? 'fwd' : 'back';
+    const stickY = gp.axes[3] || 0;
+    if (Math.abs(stickY) > STICK_DEADZONE) {
+      seekBy(stickY * oneLineHeight() * STICK_GAIN);
+    }
 
-        if (btnHoldStart[holdKey] === 0) {
-          /* перше натискання — синхронізуємо ціль і робимо крок */
-          btnHoldStart[holdKey] = now;
-          scrollTarget = scrollArea.scrollTop;
-          smoothScrollTo(scrollTarget + dir * oneLineHeight());
-        } else {
-          const held = now - btnHoldStart[holdKey];
-          if (held > DPAD_FIRST_DELAY && now - dpadCooldown > DPAD_REPEAT) {
-            dpadCooldown = now;
-            smoothScrollTo(scrollTarget + dir * oneLineHeight());
-          }
-        }
-        btnHoldStart[otherKey] = 0;
+    if (btnBack || btnFwd) {
+      const dir      = btnBack ? -1 : 1;
+      const holdKey  = btnBack ? 'back' : 'fwd';
+      const otherKey = btnBack ? 'fwd' : 'back';
+
+      if (btnHoldStart[holdKey] === 0) {
+        btnHoldStart[holdKey] = now;
+        seekBy(dir * oneLineHeight());
       } else {
-        btnHoldStart.back = 0;
-        btnHoldStart.fwd  = 0;
+        const held = now - btnHoldStart[holdKey];
+        if (held > DPAD_FIRST_DELAY && now - dpadCooldown > DPAD_REPEAT) {
+          dpadCooldown = now;
+          seekBy(dir * oneLineHeight());
+        }
       }
+      btnHoldStart[otherKey] = 0;
+    } else {
+      btnHoldStart.back = 0;
+      btnHoldStart.fwd  = 0;
     }
-    gpLoop = requestAnimationFrame(pollGamepad);
   }
+  gpLoop = requestAnimationFrame(pollGamepad);
+}
+function startGamepadLoop() { if (gpLoop === null) pollGamepad(); }
+function stopGamepadLoop()  { if (gpLoop !== null) { cancelAnimationFrame(gpLoop); gpLoop = null; } }
 
-  window.addEventListener('gamepadconnected', () => {
-    statusBadge.textContent = '🎮 підключено';
-    setTimeout(() => { if (!playing) statusBadge.textContent = '⏸ пауза'; }, 2500);
-    if (!gpLoop) pollGamepad();
-  });
+window.addEventListener('gamepadconnected', () => {
+  statusBadge.textContent = '🎮 підключено';
+  setTimeout(() => { if (!playing) statusBadge.textContent = '⏸ пауза'; }, 2500);
+  startGamepadLoop();
+});
+window.addEventListener('gamepaddisconnected', () => {
+  const stillConnected = (navigator.getGamepads ? navigator.getGamepads() : []).some(Boolean);
+  if (!stillConnected) stopGamepadLoop();
+  if (!playing) statusBadge.textContent = '⏸ пауза';
+});
 
-  window.addEventListener('gamepaddisconnected', () => {
-    if (gpLoop) { cancelAnimationFrame(gpLoop); gpLoop = null; }
-    if (!playing) statusBadge.textContent = '⏸ пауза';
-  });
+/* ── КЛАВІАТУРА ── */
+document.addEventListener('keydown', (e) => {
+  if (editOverlay.classList.contains('open')) return;
+  switch (e.code) {
+    case 'Space':        e.preventDefault(); togglePlay(); break;
+    case 'ArrowUp':      e.preventDefault(); seekBy(-oneLineHeight() * 2); break;
+    case 'ArrowDown':    e.preventDefault(); seekBy(oneLineHeight() * 2); break;
+    case 'Home':         e.preventDefault(); seekTo(0); break;
+    case 'End':          e.preventDefault(); seekTo(maxOffset()); break;
+    case 'BracketRight': setSpeed(speed + 1); break;
+    case 'BracketLeft':  setSpeed(speed - 1); break;
+    case 'KeyF':         toggleFullscreen(); break;
+    case 'KeyM':         toggleMirror(); break;
+  }
+});
 
-  pollGamepad();
+/* ── ПРИВ'ЯЗКА КНОПОК ── */
+$('btn-play').addEventListener('click', togglePlay);
+$('btn-edit').addEventListener('click', openEdit);
+$('btn-reset').addEventListener('click', () => seekTo(0));
+$('btn-font-dec').addEventListener('click', () => changeFontSize(-FONT_STEP));
+$('btn-font-inc').addEventListener('click', () => changeFontSize(FONT_STEP));
+$('btn-margin-wide').addEventListener('click', () => changeMargin(MARGIN_STEP));
+$('btn-margin-narrow').addEventListener('click', () => changeMargin(-MARGIN_STEP));
+$('btn-lh-dec').addEventListener('click', () => changeLineHeight(-LH_STEP));
+$('btn-lh-inc').addEventListener('click', () => changeLineHeight(LH_STEP));
+$('btn-mirror').addEventListener('click', toggleMirror);
+$('btn-mirror-v').addEventListener('click', toggleMirrorV);
+$('btn-focus').addEventListener('click', toggleFocus);
+$('btn-countdown').addEventListener('click', toggleCountdown);
+$('btn-fullscreen').addEventListener('click', toggleFullscreen);
+$('btn-timer').addEventListener('click', fitToTime);
+speedRangeEl.addEventListener('input', (e) => setSpeed(e.target.value));
 
-  document.addEventListener('keydown', (e) => {
-    if (editOverlay.classList.contains('open')) return;
-    if (e.code === 'Space')        { e.preventDefault(); togglePlay(); }
-    if (e.code === 'ArrowUp')      { e.preventDefault(); if (playing) togglePlay(); applyOffset(offset - 80); }
-    if (e.code === 'ArrowDown')    { e.preventDefault(); if (playing) togglePlay(); applyOffset(offset + 80); }
-    if (e.code === 'BracketRight')  setSpeed(Math.min(10, speed + 1));
-    if (e.code === 'BracketLeft')   setSpeed(Math.max(1,  speed - 1));
-  });
+$('btn-cancel').addEventListener('click', () => closeEdit(false));
+$('btn-save').addEventListener('click', () => closeEdit(true));
+$('btn-export').addEventListener('click', exportTxt);
+$('btn-import').addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', (e) => { if (e.target.files[0]) importTxt(e.target.files[0]); e.target.value = ''; });
+$('btn-script-saveas').addEventListener('click', saveScriptAs);
+$('btn-script-delete').addEventListener('click', deleteScript);
+scriptSelect.addEventListener('change', () => {
+  const name = scriptSelect.value;
+  if (name) { const s = getScripts(); if (name in s) editTa.value = s[name]; }
+});
 
-  loadAll();
+/* ── СТАРТ ── */
+loadAll();
+// опитуємо геймпад лише якщо він уже підключений; інакше чекаємо на подію
+if ((navigator.getGamepads ? navigator.getGamepads() : []).some(Boolean)) startGamepadLoop();
 </script>
 </body>
 </html>
