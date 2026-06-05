@@ -806,13 +806,24 @@ function fitToTime() {
 }
 
 /* ── ПОВНОЕКРАННИЙ РЕЖИМ ── */
+function fsElement() {
+  return document.fullscreenElement || document.webkitFullscreenElement || null;
+}
 function toggleFullscreen() {
-  if (!document.fullscreenElement) {
-    (document.documentElement.requestFullscreen || (() => {})).call(document.documentElement);
+  const el = document.documentElement;
+  if (!fsElement()) {
+    const req = el.requestFullscreen || el.webkitRequestFullscreen || el.webkitRequestFullScreen;
+    if (req) {
+      try { const p = req.call(el); if (p && p.catch) p.catch(() => {}); } catch (e) {}
+    }
   } else {
-    (document.exitFullscreen || (() => {})).call(document);
+    const exit = document.exitFullscreen || document.webkitExitFullscreen;
+    if (exit) { try { exit.call(document); } catch (e) {} }
   }
 }
+function onFsChange() { $('btn-fullscreen').classList.toggle('active', !!fsElement()); }
+document.addEventListener('fullscreenchange', onFsChange);
+document.addEventListener('webkitfullscreenchange', onFsChange);
 
 /* ── WAKE LOCK ── */
 let wakeLock = null;
