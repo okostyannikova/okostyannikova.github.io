@@ -7,15 +7,15 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Расписание">
-<meta name="theme-color" content="#0f1530">
+<meta name="theme-color" content="#ddcfb8">
 <title>Расписание</title>
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" href="icon-192.png">
 <style>
   :root {
-    --bg: #0f1530;
-    --bg2: #1a2350;
+    --bg: #ddcfb8;
+    --bg2: #ece2d1;
     --text: #fff;
     --muted: rgba(255,255,255,.65);
     --card: rgba(255,255,255,.08);
@@ -79,7 +79,7 @@
   @keyframes float { 50% { transform: translateY(-2vh); } }
   #done .title { font-size: 9vh; font-weight: 800; margin-top: 2vh; }
   #done .note { font-size: 4vh; color: var(--muted); margin-top: 1vh; }
-  body.sleep { --bg: #05060f; --bg2: #0d1026; }
+  
   
   .stars { position: fixed; inset: 0; pointer-events: none; display: none; }
   body.sleep .stars { display: block; }
@@ -247,7 +247,7 @@ function wedge(a0, a1, r) {
 }
 function drawDial(st, d) {
   const its = st.r.items;
-  const face = '#1c2452', ink = '#ffffff', outline = '#0b1030';
+  const face = '#f6eee2', ink = '#4a3b2c', outline = '#cbb692';
   const h = d.getHours(), m = d.getMinutes(), s = d.getSeconds();
   const nowMin = h * 60 + m + s / 60;
   let g = '';
@@ -261,7 +261,7 @@ function drawDial(st, d) {
     const sweep = mod(toMin(its[i + 1].t) - toMin(its[i].t), 1440) / 2;
     const off = mod(nowMin - toMin(its[i].t), 1440);
     const cur = off < sweep * 2;
-    g += `<path d="${wedge(a0, a0 + sweep, R - 4)}" fill="${its[i].c}" stroke="${cur ? '#ffffff' : face}" stroke-width="${cur ? 8 : 4}" stroke-linejoin="round"/>`;
+    g += `<path d="${wedge(a0, a0 + sweep, R - 4)}" fill="${its[i].c}" stroke="${cur ? ink : face}" stroke-width="${cur ? 8 : 4}" stroke-linejoin="round"/>`;
     mids.push({ a: a0 + sweep / 2, e: its[i].e, c: its[i].c, cur });
   }
   // луна — просто символ на циферблате сразу после начала сна
@@ -280,7 +280,7 @@ function drawDial(st, d) {
     const [lx0, ly0] = pt(x.a, R - 20), [lx1, ly1] = pt(pa, 535);
     const [ix, iy] = pt(pa, 582);
     g += `<line x1="${lx0}" y1="${ly0}" x2="${lx1}" y2="${ly1}" stroke="${x.c}" stroke-width="6" stroke-linecap="round"/>`;
-    g += `<circle cx="${ix}" cy="${iy}" r="${x.cur ? 54 : 48}" fill="${face}" stroke="${x.cur ? '#ffffff' : x.c}" stroke-width="${x.cur ? 10 : 8}"/>`;
+    g += `<circle cx="${ix}" cy="${iy}" r="${x.cur ? 54 : 48}" fill="${face}" stroke="${x.cur ? ink : x.c}" stroke-width="${x.cur ? 10 : 8}"/>`;
     g += `<text x="${ix}" y="${iy + 3}" font-size="${x.cur ? 62 : 54}" text-anchor="middle" dominant-baseline="central">${x.e}</text>`;
   });
 
@@ -299,16 +299,16 @@ function drawDial(st, d) {
   // стрелки: часовая (с жёлтым кончиком — она показывает на сегменты), минутная, секундная
   const ha = ((h % 12) + (m + s / 60) / 60) * 30, ma = (m + s / 60) * 6, sa = s * 6;
   g += `<g transform="rotate(${ma} ${C} ${C})">
-    <path d="M ${C - 13} ${C + 50} L ${C - 10} ${C - 340} L ${C} ${C - 425} L ${C + 10} ${C - 340} L ${C + 13} ${C + 50} Z" fill="#ffffff" stroke="${outline}" stroke-width="8" stroke-linejoin="round"/>
+    <path d="M ${C - 13} ${C + 50} L ${C - 10} ${C - 340} L ${C} ${C - 425} L ${C + 10} ${C - 340} L ${C + 13} ${C + 50} Z" fill="${ink}" stroke="${face}" stroke-width="8" stroke-linejoin="round"/>
   </g>`;
   g += `<g transform="rotate(${ha} ${C} ${C})">
-    <path d="M ${C - 26} ${C + 40} L ${C - 20} ${C - 220} L ${C} ${C - 290} L ${C + 20} ${C - 220} L ${C + 26} ${C + 40} Z" fill="#ffffff" stroke="${outline}" stroke-width="8" stroke-linejoin="round"/>
+    <path d="M ${C - 26} ${C + 40} L ${C - 20} ${C - 220} L ${C} ${C - 290} L ${C + 20} ${C - 220} L ${C + 26} ${C + 40} Z" fill="${ink}" stroke="${face}" stroke-width="8" stroke-linejoin="round"/>
     <path d="M ${C - 20} ${C - 220} L ${C} ${C - 290} L ${C + 20} ${C - 220} Z" fill="#ffc533"/>
   </g>`;
   g += `<g transform="rotate(${sa} ${C} ${C})">
     <line x1="${C}" y1="${C + 70}" x2="${C}" y2="${C - 430}" stroke="#ff5a5a" stroke-width="6" stroke-linecap="round"/>
   </g>`;
-  g += `<circle cx="${C}" cy="${C}" r="28" fill="#ff5a5a" stroke="${outline}" stroke-width="6"/>`;
+  g += `<circle cx="${C}" cy="${C}" r="28" fill="#ff5a5a" stroke="${face}" stroke-width="6"/>`;
   document.getElementById('dial').innerHTML = g;
 }
 
