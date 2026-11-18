@@ -176,7 +176,7 @@
     <thead><tr><th>Начало</th><th>Значок</th><th>Название</th><th>Подсказка</th><th>Цвет</th><th></th></tr></thead>
     <tbody id="rows"></tbody>
   </table>
-  <p class="hint">Последняя строка — финал (например, «Спать»): с этого времени показывается экран сна. Время указывайте по порядку.</p>
+  <p class="hint">Последняя строка — финал (например, «Спать»): с этого времени и до указанного «до» показывается экран сна. Если «до» пустое — финал показывается 1,5 часа. Время указывайте по порядку.</p>
   <div class="row-actions">
     <button class="btn" id="addRow">+ Добавить шаг</button>
     <label><input type="checkbox" id="soundOn"> Звуковой сигнал при смене занятия</label>
@@ -196,28 +196,18 @@ const DEFAULTS = {
   sound: true,
   routines: [
     {
-      id: 'morning', name: 'Утро', theme: 'morning',
-      items: [
-        { t: '07:00', e: '🌞', title: 'Просыпаемся', note: 'Умываемся и идём в туалет', c: '#FFB347' },
-        { t: '07:15', e: '🥣', title: 'Завтрак', note: 'Кушаем спокойно, не торопимся', c: '#FF8A65' },
-        { t: '07:35', e: '👕', title: 'Одеваемся', note: 'Одежда, носочки, причёска', c: '#7CC67C' },
-        { t: '07:50', e: '🪥', title: 'Чистим зубы', note: 'Чистим хорошо, все зубки', c: '#3EC6C1' },
-        { t: '08:00', e: '🎒', title: 'Выходим!', note: 'Хорошего дня!', c: '#6FA8FF' }
-      ]
-    },
-    {
       id: 'evening', name: 'Вечер', theme: 'evening',
       items: [
         { t: '21:00', e: '🧩', title: 'Спокойные игры', note: 'Не прыгаем и не бегаем. Рисуем, собираем, играем тихо', c: '#7C9CFF' },
         { t: '21:30', e: '🪥', title: 'Чистим зубы', note: '10 минут — чистим хорошо, все зубки', c: '#3EC6C1' },
         { t: '21:40', e: '📖', title: 'Читаем книжку', note: 'Выбираем книжку и читаем вместе', c: '#F2B84B' },
-        { t: '22:00', e: '🌙', title: 'Спать', note: 'Спокойной ночи!', c: '#8A7CFF', sleep: true }
+        { t: '22:00', e: '🌙', title: 'Спать', note: 'Спокойной ночи!', c: '#8A7CFF', sleep: true, until: '08:00' }
       ]
     }
   ]
 };
 const BEFORE = 60;  // за сколько минут до начала показывать «скоро»
-const AFTER = 90;   // сколько минут после финала показывать экран сна / «выходим»
+const AFTER = 90;   // сколько минут показывать финал, если у него не задано «до»
 const STORE = 'kidsSchedule.v1';
 
 let cfg = load();
@@ -256,10 +246,12 @@ function state(d) {
     const span = mod(e - s, 1440) || 1440;
     const off = mod(nowMin - s, 1440);           // минут с начала
     const until = 1440 - off;                     // минут до начала
+    const fin = its[its.length - 1];
+    const doneLen = fin.until ? mod(toMin(fin.until) - e, 1440) : AFTER;
     let st = null;
     if (off < span) st = { kind: 'during', prio: 3 };
-    else if (off < span + AFTER) st = { kind: 'done', prio: 1 };
-    else if (until <= BEFORE) st = { kind: 'before', prio: 2, until };
+    else if (off < span + doneLen) st = { kind: 'done', prio: 2 };
+    else if (until <= BEFORE) st = { kind: 'before', prio: 1, until };
     if (st && (!best || st.prio > best.prio)) best = { ...st, r, s, span, off };
   }
   if (best) return best;
@@ -364,7 +356,7 @@ function tick() {
   const d = now();
   const st = state(d);
   const hhmm = d.getHours() + ':' + pad(d.getMinutes());
-  document.body.classList.toggle('morning', st.r ? st.r.theme === 'morning' : d.getHours() < 14);
+  document.body.classList.toggle('morning', !!(st.r && st.r.theme === 'morning'));
   document.body.classList.toggle('sleep', st.kind === 'done' && !!st.r.items[st.r.items.length - 1].sleep);
 
   if (st.kind === 'idle') {
@@ -382,7 +374,7 @@ function tick() {
     const f = its[its.length - 1];
     document.getElementById('dEm').textContent = f.e;
     document.getElementById('dTitle').textContent = f.title;
-    document.getElementById('dNote').textContent = f.note || '';
+    document.getElementById('dNote').textContent = (f.note || '') + (f.until ? ` Спим до ${fmt(f.until)}` : '');
     const key = st.r.id + ':done';
     if (lastKey && lastKey !== key) chime(true);
     lastKey = key;
@@ -515,7 +507,7 @@ function renderSettings() {
       <td><input data-k="title" value="${esc(x.title)}"></td>
       <td><input data-k="note" value="${esc(x.note)}"></td>
       <td><input type="color" data-k="c" value="${esc(x.c)}"></td>
-      <td>${its.length > 2 ? `<button class="btn danger" data-del="${i}">✕</button>` : ''}</td>
+      <td>${i === its.length - 1 ? `<label style="white-space:nowrap">до <input type="time" data-k="until" value="${esc(x.until)}"></label>` : its.length > 2 ? `<button class="btn danger" data-del="${i}">✕</button>` : ''}</td>
     </tr>`).join('');
 }
 document.getElementById('tabs').addEventListener('click', e => { const i = e.target.dataset.i; if (i != null) { tab = +i; renderSettings(); } });
