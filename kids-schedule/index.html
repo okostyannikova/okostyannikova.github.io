@@ -43,9 +43,10 @@
 
   /* ---------- главный экран ---------- */
   #main { align-items: center; justify-content: center; gap: 2.5vw; padding-left: 2vw; padding-right: 2.5vw; }
-  #dialWrap { height: min(95vh, 62vw); aspect-ratio: 1; flex: none; }
+  #dialWrap { height: min(96vh, 96vw); aspect-ratio: 1; flex: none; }
   #dial { width: 100%; height: 100%; overflow: visible; }
   #panel { flex: 1; min-width: 0; max-width: 40vw; max-height: 96vh; display: flex; flex-direction: column; gap: 1.8vh; }
+  #panel, #awake, .stars { display: none !important; }
   .clock { font-size: min(8vh, 5.5vw); font-weight: 800; letter-spacing: .02em; font-variant-numeric: tabular-nums; line-height: 1; }
   .clock small { font-size: .38em; font-weight: 600; color: var(--muted); margin-left: .5em; letter-spacing: 0; }
   .card {
@@ -79,7 +80,7 @@
   #done .title { font-size: 9vh; font-weight: 800; margin-top: 2vh; }
   #done .note { font-size: 4vh; color: var(--muted); margin-top: 1vh; }
   body.sleep { --bg: #05060f; --bg2: #0d1026; }
-  body.sleep #done { filter: brightness(.75); }
+  body.sleep #main { filter: brightness(.7); }
   .stars { position: fixed; inset: 0; pointer-events: none; display: none; }
   body.sleep .stars { display: block; }
   .stars i { position: absolute; width: .5vh; height: .5vh; border-radius: 50%; background: #fff; opacity: .6; animation: tw 3s ease-in-out infinite; }
@@ -99,7 +100,7 @@
   /* ---------- служебное ---------- */
   #gear {
     position: fixed; bottom: calc(env(safe-area-inset-bottom) + 1vh); right: calc(env(safe-area-inset-right) + 1.5vw);
-    font-size: 3.5vh; opacity: .25; z-index: 5; padding: 1vh; border-radius: 50%;
+    font-size: 3.5vh; opacity: .12; z-index: 5; padding: 1vh; border-radius: 50%;
     background: none; border: 0; color: var(--text); transition: opacity .2s, transform 1.2s;
   }
   #gear.hold { opacity: 1; transform: rotate(180deg); }
@@ -160,32 +161,9 @@
 </div>
 
 <!-- кнопка старта (нужна, чтобы iPad разрешил звук и не гасил экран) -->
-<div class="screen on" id="start">
+<div class="screen" id="start">
   <button id="startBtn">▶ Начать</button>
   <p>Экран не будет гаснуть, пока приложение открыто</p>
-</div>
-
-<button id="gear" aria-label="Настройки">⚙️</button>
-<div id="awake"></div>
-
-<!-- настройки (открываются долгим нажатием на ⚙️) -->
-<div class="screen" id="settings">
-  <h2>Настройки расписания</h2>
-  <div class="tabs" id="tabs"></div>
-  <table>
-    <thead><tr><th>Начало</th><th>Значок</th><th>Название</th><th>Подсказка</th><th>Цвет</th><th></th></tr></thead>
-    <tbody id="rows"></tbody>
-  </table>
-  <p class="hint">Последняя строка — финал (например, «Спать»): с этого времени и до указанного «до» показывается экран сна. Если «до» пустое — финал показывается 1,5 часа. Время указывайте по порядку.</p>
-  <div class="row-actions">
-    <button class="btn" id="addRow">+ Добавить шаг</button>
-    <label><input type="checkbox" id="soundOn"> Звуковой сигнал при смене занятия</label>
-  </div>
-  <div class="row-actions">
-    <button class="btn primary" id="save">Сохранить</button>
-    <button class="btn" id="cancel">Отмена</button>
-    <button class="btn danger" id="reset">Вернуть по умолчанию</button>
-  </div>
 </div>
 
 <video id="nosleep" src="nosleep.mp4" muted playsinline loop style="position:fixed;width:1px;height:1px;opacity:0;pointer-events:none"></video>
@@ -208,14 +186,8 @@ const DEFAULTS = {
 };
 const BEFORE = 60;  // за сколько минут до начала показывать «скоро»
 const AFTER = 90;   // сколько минут показывать финал, если у него не задано «до»
-const STORE = 'kidsSchedule.v1';
 
-let cfg = load();
-function load() {
-  try { const s = JSON.parse(localStorage.getItem(STORE)); if (s && s.routines) return s; } catch (e) {}
-  return JSON.parse(JSON.stringify(DEFAULTS));
-}
-function persist() { try { localStorage.setItem(STORE, JSON.stringify(cfg)); } catch (e) {} }
+const cfg = DEFAULTS;
 
 /* ================= ВРЕМЯ ================= */
 // ?t=21:12 — для проверки: часы стартуют с этого времени и идут дальше
@@ -359,27 +331,41 @@ function tick() {
   document.body.classList.toggle('morning', !!(st.r && st.r.theme === 'morning'));
   document.body.classList.toggle('sleep', st.kind === 'done' && !!st.r.items[st.r.items.length - 1].sleep);
 
-  if (st.kind === 'idle') {
-    show('idle');
-    document.getElementById('iClock').textContent = hhmm;
-    const n = st.next;
-    document.getElementById('iNote').textContent = n ? `Следующее: ${n.r.items[0].e} ${n.r.name} в ${fmt(n.r.items[0].t)}` : '';
-    lastKey = 'idle';
+  // днём и ночью — тоже аналоговые часы, справа только карточка
+  if (st.kind === 'idle' || st.kind === 'done') {
+    const r = st.kind === 'idle' ? st.next.r : st.r;
+    const ri = r.items, first = ri[0], f = ri[ri.length - 1];
+    show('main');
+    drawDial({ r }, d);
+    document.getElementById('clock').innerHTML = `${hhmm}<small>${r.name}</small>`;
+    const card = document.getElementById('card');
+    const bar = document.getElementById('cBar');
+    bar.parentElement.style.display = 'none';
+    document.getElementById('soon').classList.remove('on');
+    if (st.kind === 'idle') {
+      const u = Math.ceil(st.next.until), hh = Math.floor(u / 60), mm = u % 60;
+      card.style.setProperty('--accent', first.c);
+      document.getElementById('cEm').textContent = first.e;
+      document.getElementById('cTitle').textContent = `В ${fmt(first.t)} — ${first.title.toLowerCase()}`;
+      document.getElementById('cNote').textContent = '';
+      document.getElementById('cLeft').innerHTML = 'через ' + (hh ? `<b>${hh}</b> ч ` : '') + `<b>${mm}</b> мин`;
+      document.getElementById('next').innerHTML = ri.slice(1).map(x => `<li><span class="t">${fmt(x.t)}</span><span class="e">${x.e}</span><span>${x.title}</span></li>`).join('');
+      lastKey = 'idle';
+    } else {
+      card.style.setProperty('--accent', f.c);
+      document.getElementById('cEm').textContent = f.e;
+      document.getElementById('cTitle').textContent = f.title;
+      document.getElementById('cNote').textContent = f.note || '';
+      document.getElementById('cLeft').innerHTML = f.until ? `спим до <b>${fmt(f.until)}</b>` : '';
+      document.getElementById('next').innerHTML = '';
+      const key = r.id + ':done';
+      if (lastKey && lastKey !== key) { card.classList.remove('pulse'); void card.offsetWidth; card.classList.add('pulse'); chime(true); }
+      lastKey = key;
+    }
     return;
   }
   const its = st.r.items;
-
-  if (st.kind === 'done') {
-    show('done');
-    const f = its[its.length - 1];
-    document.getElementById('dEm').textContent = f.e;
-    document.getElementById('dTitle').textContent = f.title;
-    document.getElementById('dNote').textContent = (f.note || '') + (f.until ? ` Спим до ${fmt(f.until)}` : '');
-    const key = st.r.id + ':done';
-    if (lastKey && lastKey !== key) chime(true);
-    lastKey = key;
-    return;
-  }
+  document.getElementById('cBar').parentElement.style.display = '';
 
   show('main');
   document.getElementById('clock').innerHTML = `${hhmm}<small>${st.r.name}</small>`;
@@ -446,19 +432,16 @@ function chime(main, soft) {
 
 /* ================= ЭКРАН НЕ ГАСНЕТ ================= */
 let lock = null;
-const awakeEl = document.getElementById('awake');
 async function keepAwake() {
   let ok = false;
   if ('wakeLock' in navigator) {
     try {
       lock = await navigator.wakeLock.request('screen');
       ok = true;
-      lock.addEventListener('release', () => { awakeEl.textContent = ''; });
     } catch (e) {}
   }
   // запасной способ для старых iPadOS — беззвучное невидимое видео
   try { await document.getElementById('nosleep').play(); ok = true; } catch (e) {}
-  awakeEl.textContent = ok ? '☀︎ экран не гаснет' : '⚠︎ экран может погаснуть';
 }
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && !document.getElementById('start').classList.contains('on')) keepAwake(); });
 
@@ -473,72 +456,19 @@ document.getElementById('startBtn').addEventListener('click', () => {
   tick();
 });
 
+function activate() {
+  try { if (!ac) { ac = new (window.AudioContext || window.webkitAudioContext)(); } ac.resume(); } catch (e) {}
+  keepAwake();
+}
+document.addEventListener('pointerdown', activate);
+keepAwake();
+
 /* ================= ЗВЁЗДЫ ================= */
 (() => {
   const s = document.getElementById('stars'); let h = '';
   for (let i = 0; i < 60; i++) h += `<i style="left:${Math.random() * 100}%;top:${Math.random() * 100}%;animation-delay:${Math.random() * 3}s"></i>`;
   s.innerHTML = h;
 })();
-
-/* ================= НАСТРОЙКИ (долгое нажатие на ⚙️) ================= */
-const gear = document.getElementById('gear');
-let holdT = null;
-const startHold = e => { e.preventDefault(); gear.classList.add('hold'); holdT = setTimeout(openSettings, 1200); };
-const endHold = () => { gear.classList.remove('hold'); clearTimeout(holdT); };
-gear.addEventListener('pointerdown', startHold);
-['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => gear.addEventListener(ev, endHold));
-
-let draft = null, tab = 0;
-function openSettings() {
-  endHold();
-  draft = JSON.parse(JSON.stringify(cfg));
-  document.getElementById('soundOn').checked = !!draft.sound;
-  renderSettings();
-  document.getElementById('settings').classList.add('on');
-}
-const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
-function renderSettings() {
-  document.getElementById('tabs').innerHTML = draft.routines.map((r, i) => `<button class="${i === tab ? 'on' : ''}" data-i="${i}">${r.name}</button>`).join('');
-  const its = draft.routines[tab].items;
-  document.getElementById('rows').innerHTML = its.map((x, i) => `
-    <tr class="${i === its.length - 1 ? 'final' : ''}" data-i="${i}">
-      <td><input type="time" data-k="t" value="${esc(x.t)}"></td>
-      <td><input class="emo" data-k="e" value="${esc(x.e)}"></td>
-      <td><input data-k="title" value="${esc(x.title)}"></td>
-      <td><input data-k="note" value="${esc(x.note)}"></td>
-      <td><input type="color" data-k="c" value="${esc(x.c)}"></td>
-      <td>${i === its.length - 1 ? `<label style="white-space:nowrap">до <input type="time" data-k="until" value="${esc(x.until)}"></label>` : its.length > 2 ? `<button class="btn danger" data-del="${i}">✕</button>` : ''}</td>
-    </tr>`).join('');
-}
-document.getElementById('tabs').addEventListener('click', e => { const i = e.target.dataset.i; if (i != null) { tab = +i; renderSettings(); } });
-document.getElementById('rows').addEventListener('input', e => {
-  const k = e.target.dataset.k; if (!k) return;
-  const i = +e.target.closest('tr').dataset.i;
-  draft.routines[tab].items[i][k] = e.target.value;
-});
-document.getElementById('rows').addEventListener('click', e => {
-  const d = e.target.dataset.del; if (d == null) return;
-  draft.routines[tab].items.splice(+d, 1); renderSettings();
-});
-document.getElementById('addRow').onclick = () => {
-  const its = draft.routines[tab].items;
-  const last = its[its.length - 1];
-  const prev = its[its.length - 2];
-  its.splice(its.length - 1, 0, { t: prev ? prev.t : last.t, e: '⭐', title: 'Новый шаг', note: '', c: '#9adf7c' });
-  renderSettings();
-};
-document.getElementById('soundOn').onchange = e => { draft.sound = e.target.checked; };
-document.getElementById('save').onclick = () => {
-  for (const r of draft.routines) {
-    if (r.items.some(x => !/^\d{1,2}:\d{2}$/.test(x.t))) { alert('Проверьте время в расписании «' + r.name + '»'); return; }
-  }
-  cfg = draft; persist(); closeSettings();
-};
-document.getElementById('cancel').onclick = closeSettings;
-document.getElementById('reset').onclick = () => {
-  if (confirm('Вернуть расписание по умолчанию?')) { cfg = JSON.parse(JSON.stringify(DEFAULTS)); persist(); closeSettings(); }
-};
-function closeSettings() { document.getElementById('settings').classList.remove('on'); lastKey = null; tick(); }
 
 /* ================= ЗАПУСК ================= */
 tick();
