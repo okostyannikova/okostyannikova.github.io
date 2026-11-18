@@ -43,7 +43,7 @@
 
   /* ---------- главный экран ---------- */
   #main { align-items: center; justify-content: center; gap: 2.5vw; padding-left: 2vw; padding-right: 2.5vw; }
-  #dialWrap { height: min(96vh, 96vw); aspect-ratio: 1; flex: none; }
+  #dialWrap { height: min(84vh, 70vw); aspect-ratio: 1; flex: none; }
   #dial { width: 100%; height: 100%; overflow: visible; }
   #panel { flex: 1; min-width: 0; max-width: 40vw; max-height: 96vh; display: flex; flex-direction: column; gap: 1.8vh; }
   #panel, #awake, .stars { display: none !important; }
@@ -236,10 +236,10 @@ function state(d) {
   return { kind: 'idle', next };
 }
 
-/* ================= ЦИФЕРБЛАТ (настоящие часы) ================= */
+/* ================= ЦИФЕРБЛАТ (настоящие часы, сегменты по часовой стрелке) ================= */
 const C = 500, R = 470;
 const pt = (a, r) => [C + r * Math.sin(a * Math.PI / 180), C - r * Math.cos(a * Math.PI / 180)];
-const signed = x => mod(x + 720, 1440) - 720;
+const hourAngle = t => (toMin(t) % 720) / 2;   // где на циферблате стоит это время (часовая стрелка)
 function wedge(a0, a1, r) {
   if (a1 - a0 >= 359.99) return `M ${C} ${C - r} A ${r} ${r} 0 1 1 ${C - 0.01} ${C - r} Z`;
   const [x0, y0] = pt(a0, r), [x1, y1] = pt(a1, r);
@@ -247,45 +247,45 @@ function wedge(a0, a1, r) {
 }
 function drawDial(st, d) {
   const its = st.r.items;
-  const light = st.r.theme === 'morning';
-  const face = light ? '#fffaf2' : '#1c2452';
-  const ink = light ? '#3a2a1a' : '#ffffff';
+  const face = '#1c2452', ink = '#ffffff', outline = '#0b1030';
   const h = d.getHours(), m = d.getMinutes(), s = d.getSeconds();
   const nowMin = h * 60 + m + s / 60;
-  const mh = m + s / 60;                 // где сейчас минутная стрелка (0–60)
   let g = '';
-  // корпус и циферблат
-  g += `<circle cx="${C}" cy="${C}" r="${R + 22}" fill="${light ? '#e9d7bf' : '#0b1030'}"/>`;
+  g += `<circle cx="${C}" cy="${C}" r="${R + 22}" fill="${outline}"/>`;
   g += `<circle cx="${C}" cy="${C}" r="${R}" fill="${face}"/>`;
 
-  // цветные секторы: только то, что попадает в ближайшие 60 минут
-  const icons = [];
-  for (let i = 0; i < its.length - 1; i++) {
-    const rel0 = signed(toMin(its[i].t) - nowMin);
-    const dur = mod(toMin(its[i + 1].t) - toMin(its[i].t), 1440);
-    const x0 = Math.max(rel0, 0), x1 = Math.min(rel0 + dur, 60);
-    if (x1 - x0 <= 0) continue;
-    const cur = rel0 <= 0;
-    const a0 = (mh + x0) * 6, a1 = (mh + x1) * 6;
-    g += `<path d="${wedge(a0, a1, R - 4)}" fill="${its[i].c}" opacity="${cur ? 1 : 0.8}" stroke="${face}" stroke-width="6"/>`;
-    if (x1 - x0 >= 4) {
-      const size = Math.min(cur ? 150 : 120, 40 + (x1 - x0) * 9);
-      const [ex, ey] = pt((a0 + a1) / 2, 230);
-      icons.push(`<text x="${ex}" y="${ey}" font-size="${size}" text-anchor="middle" dominant-baseline="central">${its[i].e}</text>`);
-    }
-  }
-  // значок финала (🌙 / 🎒) — сразу за его границей
+  // сон: от финала до «до» (например, 22:00 → 8:00)
   const f = its[its.length - 1];
-  const relF = signed(toMin(f.t) - nowMin);
-  if (relF > 0 && relF <= 60) {
-    const a = (mh + relF) * 6;
-    const [bx, by] = pt(a + 14, 215);
-    icons.push(`<circle cx="${bx}" cy="${by}" r="58" fill="${face}" stroke="${f.c}" stroke-width="10"/>`);
-    icons.push(`<text x="${bx}" y="${by + 3}" font-size="70" text-anchor="middle" dominant-baseline="central">${f.e}</text>`);
-    const [lx0, ly0] = pt(a, 60), [lx1, ly1] = pt(a, R - 4);
-    g += `<line x1="${lx0}" y1="${ly0}" x2="${lx1}" y2="${ly1}" stroke="${f.c}" stroke-width="10" stroke-linecap="round"/>`;
+  if (f.until) {
+    const a0 = hourAngle(f.t), sweep = Math.min(360, mod(toMin(f.until) - toMin(f.t), 1440) / 2);
+    g += `<path d="${wedge(a0, a0 + sweep, R - 4)}" fill="${f.c}" opacity=".35"/>`;
+    const [mx, my] = pt(a0 + sweep / 2, 240);
+    g += `<text x="${mx}" y="${my}" font-size="130" text-anchor="middle" dominant-baseline="central">${f.e}</text>`;
   }
-  g += icons.join('');
+
+  // занятия
+  const mids = [];
+  for (let i = 0; i < its.length - 1; i++) {
+    const a0 = hourAngle(its[i].t);
+    const sweep = mod(toMin(its[i + 1].t) - toMin(its[i].t), 1440) / 2;
+    const off = mod(nowMin - toMin(its[i].t), 1440);
+    const cur = off < sweep * 2;
+    g += `<path d="${wedge(a0, a0 + sweep, R - 4)}" fill="${its[i].c}" stroke="${cur ? '#ffffff' : face}" stroke-width="${cur ? 8 : 4}" stroke-linejoin="round"/>`;
+    mids.push({ a: a0 + sweep / 2, e: its[i].e, c: its[i].c, cur });
+  }
+
+  // значки занятий снаружи циферблата, с линиями к своему сегменту
+  const pos = mids.map(x => x.a);
+  for (let i = 1; i < pos.length; i++) if (pos[i] - pos[i - 1] < 24) pos[i] = pos[i - 1] + 24;
+  const shift = (mids.reduce((t, x) => t + x.a, 0) - pos.reduce((t, x) => t + x, 0)) / (pos.length || 1);
+  mids.forEach((x, i) => {
+    const pa = pos[i] + shift;
+    const [lx0, ly0] = pt(x.a, R - 20), [lx1, ly1] = pt(pa, 560);
+    const [ix, iy] = pt(pa, 610);
+    g += `<line x1="${lx0}" y1="${ly0}" x2="${lx1}" y2="${ly1}" stroke="${x.c}" stroke-width="6" stroke-linecap="round"/>`;
+    g += `<circle cx="${ix}" cy="${iy}" r="${x.cur ? 62 : 54}" fill="${face}" stroke="${x.cur ? '#ffffff' : x.c}" stroke-width="${x.cur ? 10 : 8}"/>`;
+    g += `<text x="${ix}" y="${iy + 3}" font-size="${x.cur ? 72 : 62}" text-anchor="middle" dominant-baseline="central">${x.e}</text>`;
+  });
 
   // 60 делений
   for (let i = 0; i < 60; i++) {
@@ -299,23 +299,19 @@ function drawDial(st, d) {
     g += `<text x="${x}" y="${y + 4}" font-size="88" font-weight="800" fill="${ink}" stroke="${face}" stroke-width="14" paint-order="stroke" stroke-linejoin="round" text-anchor="middle" dominant-baseline="central">${n}</text>`;
   }
 
-  // стрелки
-  const ha = ((h % 12) + mh / 60) * 30, ma = mh * 6, sa = s * 6;
-  const handCol = light ? '#3a2a1a' : '#ffffff', outline = light ? '#fffaf2' : '#0b1030';
-  // часовая
-  g += `<g transform="rotate(${ha} ${C} ${C})">
-    <path d="M ${C - 22} ${C + 40} L ${C - 16} ${C - 230} L ${C} ${C - 270} L ${C + 16} ${C - 230} L ${C + 22} ${C + 40} Z" fill="${handCol}" stroke="${outline}" stroke-width="8" stroke-linejoin="round"/>
-  </g>`;
-  // минутная (с жёлтым кончиком)
+  // стрелки: часовая (с жёлтым кончиком — она показывает на сегменты), минутная, секундная
+  const ha = ((h % 12) + (m + s / 60) / 60) * 30, ma = (m + s / 60) * 6, sa = s * 6;
   g += `<g transform="rotate(${ma} ${C} ${C})">
-    <path d="M ${C - 15} ${C + 50} L ${C - 11} ${C - 330} L ${C} ${C - 420} L ${C + 11} ${C - 330} L ${C + 15} ${C + 50} Z" fill="${handCol}" stroke="${outline}" stroke-width="8" stroke-linejoin="round"/>
-    <path d="M ${C - 11} ${C - 330} L ${C} ${C - 420} L ${C + 11} ${C - 330} Z" fill="#ffc533"/>
+    <path d="M ${C - 13} ${C + 50} L ${C - 10} ${C - 340} L ${C} ${C - 425} L ${C + 10} ${C - 340} L ${C + 13} ${C + 50} Z" fill="#ffffff" stroke="${outline}" stroke-width="8" stroke-linejoin="round"/>
   </g>`;
-  // секундная
+  g += `<g transform="rotate(${ha} ${C} ${C})">
+    <path d="M ${C - 26} ${C + 40} L ${C - 20} ${C - 220} L ${C} ${C - 290} L ${C + 20} ${C - 220} L ${C + 26} ${C + 40} Z" fill="#ffffff" stroke="${outline}" stroke-width="8" stroke-linejoin="round"/>
+    <path d="M ${C - 20} ${C - 220} L ${C} ${C - 290} L ${C + 20} ${C - 220} Z" fill="#ffc533"/>
+  </g>`;
   g += `<g transform="rotate(${sa} ${C} ${C})">
     <line x1="${C}" y1="${C + 70}" x2="${C}" y2="${C - 430}" stroke="#ff5a5a" stroke-width="6" stroke-linecap="round"/>
   </g>`;
-  g += `<circle cx="${C}" cy="${C}" r="26" fill="#ff5a5a" stroke="${outline}" stroke-width="6"/>`;
+  g += `<circle cx="${C}" cy="${C}" r="28" fill="#ff5a5a" stroke="${outline}" stroke-width="6"/>`;
   document.getElementById('dial').innerHTML = g;
 }
 
