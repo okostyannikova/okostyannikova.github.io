@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Расписание">
+<meta name="theme-color" content="#0f1530">
+<title>Расписание</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
+<style>
+  :root {
+    --bg: #0f1530;
+    --bg2: #1a2350;
+    --text: #fff;
+    --muted: rgba(255,255,255,.65);
+    --card: rgba(255,255,255,.08);
+    --accent: #7C9CFF;
+  }
+  body.morning {
+    --bg: #fff4e3;
+    --bg2: #ffe2bd;
+    --text: #3a2a1a;
+    --muted: rgba(58,42,26,.6);
+    --card: rgba(255,255,255,.7);
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; height: 100%; overflow: hidden;
+    background: radial-gradient(circle at 30% 30%, var(--bg2), var(--bg) 70%);
+    color: var(--text);
+    font-family: ui-rounded, "SF Pro Rounded", "Nunito", system-ui, -apple-system, sans-serif;
+    -webkit-user-select: none; user-select: none;
+    -webkit-touch-callout: none;
+    transition: background .8s;
+  }
+  .screen { position: fixed; inset: 0; display: none; padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+  .screen.on { display: flex; }
+
+  /* ---------- главный экран ---------- */
+  #main { align-items: center; justify-content: center; gap: 3vw; padding-left: 3vw; padding-right: 3vw; }
+  #dialWrap { height: min(86vh, 50vw); aspect-ratio: 1; flex: none; }
+  #dial { width: 100%; height: 100%; overflow: visible; }
+  #panel { flex: 1; min-width: 0; max-width: 50vw; max-height: 96vh; display: flex; flex-direction: column; gap: 1.8vh; }
+  .clock { font-size: min(8vh, 5.5vw); font-weight: 800; letter-spacing: .02em; font-variant-numeric: tabular-nums; line-height: 1; }
+  .clock small { font-size: .38em; font-weight: 600; color: var(--muted); margin-left: .5em; letter-spacing: 0; }
+  .card {
+    background: var(--card); border-radius: 4vh; padding: 3vh 2.6vw;
+    border: .6vh solid var(--accent);
+    box-shadow: 0 2vh 6vh rgba(0,0,0,.25);
+  }
+  .card .em { font-size: min(11vh, 8vw); line-height: 1.1; }
+  .card .title { font-size: min(6.4vh, 4.2vw); font-weight: 800; line-height: 1.1; margin-top: 1vh; }
+  .card .note { font-size: min(3.1vh, 2.2vw); color: var(--muted); margin-top: 1.2vh; line-height: 1.3; }
+  .card .left { font-size: min(3.8vh, 2.6vw); margin-top: 2vh; font-weight: 700; }
+  .card .left b { font-size: 1.5em; color: var(--accent); }
+  .bar { height: 2vh; background: rgba(127,127,127,.25); border-radius: 1vh; margin-top: 1.4vh; overflow: hidden; }
+  .bar i { display: block; height: 100%; width: 0; background: var(--accent); border-radius: 1vh; transition: width 1s linear; }
+  .pulse { animation: pulse 1.2s ease-out 2; }
+  @keyframes pulse { 0% { transform: scale(1); } 30% { transform: scale(1.06); } 100% { transform: scale(1); } }
+
+  .soon { font-size: min(3.4vh, 2.3vw); font-weight: 700; background: #ffd25e; color: #3a2a00; border-radius: 2vh; padding: 1.4vh 2vw; display: none; }
+  .soon.on { display: block; animation: blink 2s ease-in-out infinite; }
+  @keyframes blink { 50% { opacity: .6; } }
+
+  .next { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 1vh; }
+  .next li { display: flex; align-items: center; gap: 1.2vw; font-size: min(3.4vh, 2.3vw); color: var(--muted); }
+  .next li .t { font-variant-numeric: tabular-nums; font-weight: 700; min-width: 4.2em; }
+  .next li .e { font-size: 1.3em; }
+
+  /* ---------- сон / готово ---------- */
+  #done, #idle { flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+  #done .big { font-size: 34vh; line-height: 1; animation: float 5s ease-in-out infinite; }
+  @keyframes float { 50% { transform: translateY(-2vh); } }
+  #done .title { font-size: 9vh; font-weight: 800; margin-top: 2vh; }
+  #done .note { font-size: 4vh; color: var(--muted); margin-top: 1vh; }
+  body.sleep { --bg: #05060f; --bg2: #0d1026; }
+  body.sleep #done { filter: brightness(.75); }
+  .stars { position: fixed; inset: 0; pointer-events: none; display: none; }
+  body.sleep .stars { display: block; }
+  .stars i { position: absolute; width: .5vh; height: .5vh; border-radius: 50%; background: #fff; opacity: .6; animation: tw 3s ease-in-out infinite; }
+  @keyframes tw { 50% { opacity: .1; } }
+
+  #idle .clock { font-size: 22vh; }
+  #idle .note { font-size: 4vh; color: var(--muted); margin-top: 3vh; }
+
+  /* ---------- старт ---------- */
+  #start { flex-direction: column; align-items: center; justify-content: center; background: rgba(5,8,25,.85); z-index: 10; }
+  #start button {
+    font: inherit; font-size: 6vh; font-weight: 800; color: #fff; border: 0;
+    background: #7C9CFF; border-radius: 6vh; padding: 3vh 7vw; box-shadow: 0 2vh 5vh rgba(0,0,0,.4);
+  }
+  #start p { color: rgba(255,255,255,.7); font-size: 2.6vh; margin-top: 3vh; text-align: center; }
+
+  /* ---------- служебное ---------- */
+  #gear {
+    position: fixed; bottom: calc(env(safe-area-inset-bottom) + 1vh); right: calc(env(safe-area-inset-right) + 1.5vw);
+    font-size: 3.5vh; opacity: .25; z-index: 5; padding: 1vh; border-radius: 50%;
+    background: none; border: 0; color: var(--text); transition: opacity .2s, transform 1.2s;
+  }
+  #gear.hold { opacity: 1; transform: rotate(180deg); }
+  #awake { position: fixed; left: calc(env(safe-area-inset-left) + 1.5vw); bottom: calc(env(safe-area-inset-bottom) + 1vh); font-size: 1.6vh; color: var(--muted); opacity: .6; z-index: 5; }
+
+  /* ---------- настройки ---------- */
+  #settings { z-index: 20; background: #f4f5fb; color: #222; flex-direction: column; overflow: auto; padding: 3vh 3vw; font-size: 18px; -webkit-user-select: text; user-select: text; }
+  #settings h2 { margin: 0 0 12px; font-size: 28px; }
+  .tabs { display: flex; gap: 8px; margin-bottom: 14px; }
+  .tabs button, .btn { font: inherit; font-size: 18px; padding: 10px 18px; border-radius: 12px; border: 1px solid #c9cde0; background: #fff; color: #222; }
+  .tabs button.on { background: #3d5afe; color: #fff; border-color: #3d5afe; }
+  .btn.primary { background: #3d5afe; color: #fff; border-color: #3d5afe; }
+  .btn.danger { color: #c62828; }
+  table { border-collapse: collapse; width: 100%; background: #fff; border-radius: 12px; overflow: hidden; }
+  th, td { padding: 8px; border-bottom: 1px solid #eceef6; text-align: left; vertical-align: middle; }
+  th { font-size: 14px; color: #666; font-weight: 600; }
+  td input { font: inherit; font-size: 18px; padding: 8px; border: 1px solid #d6d9e8; border-radius: 8px; width: 100%; }
+  td input[type=time] { width: 150px; }
+  td input.emo { width: 64px; text-align: center; font-size: 26px; }
+  td input[type=color] { width: 52px; height: 42px; padding: 2px; }
+  .row-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; align-items: center; }
+  .hint { color: #666; font-size: 15px; margin: 8px 0 0; }
+  .final td { background: #f3f0ff; }
+</style>
+</head>
+<body>
+
+<div class="stars" id="stars"></div>
+
+<!-- главный экран: циферблат + карточка -->
+<div class="screen" id="main">
+  <div id="dialWrap"><svg id="dial" viewBox="0 0 1000 1000"></svg></div>
+  <div id="panel">
+    <div class="clock" id="clock"></div>
+    <div class="card" id="card">
+      <div class="em" id="cEm"></div>
+      <div class="title" id="cTitle"></div>
+      <div class="note" id="cNote"></div>
+      <div class="left" id="cLeft"></div>
+      <div class="bar"><i id="cBar"></i></div>
+    </div>
+    <div class="soon" id="soon"></div>
+    <ul class="next" id="next"></ul>
+  </div>
+</div>
+
+<!-- финал: спать / выходим -->
+<div class="screen" id="done">
+  <div class="big" id="dEm"></div>
+  <div class="title" id="dTitle"></div>
+  <div class="note" id="dNote"></div>
+</div>
+
+<!-- вне расписания -->
+<div class="screen" id="idle">
+  <div class="clock" id="iClock"></div>
+  <div class="note" id="iNote"></div>
+</div>
+
+<!-- кнопка старта (нужна, чтобы iPad разрешил звук и не гасил экран) -->
+<div class="screen on" id="start">
+  <button id="startBtn">▶ Начать</button>
+  <p>Экран не будет гаснуть, пока приложение открыто</p>
+</div>
+
+<button id="gear" aria-label="Настройки">⚙️</button>
+<div id="awake"></div>
+
+<!-- настройки (открываются долгим нажатием на ⚙️) -->
+<div class="screen" id="settings">
+  <h2>Настройки расписания</h2>
+  <div class="tabs" id="tabs"></div>
+  <table>
+    <thead><tr><th>Начало</th><th>Значок</th><th>Название</th><th>Подсказка</th><th>Цвет</th><th></th></tr></thead>
+    <tbody id="rows"></tbody>
+  </table>
+  <p class="hint">Последняя строка — финал (например, «Спать»): с этого времени показывается экран сна. Время указывайте по порядку.</p>
+  <div class="row-actions">
+    <button class="btn" id="addRow">+ Добавить шаг</button>
+    <label><input type="checkbox" id="soundOn"> Звуковой сигнал при смене занятия</label>
+  </div>
+  <div class="row-actions">
+    <button class="btn primary" id="save">Сохранить</button>
+    <button class="btn" id="cancel">Отмена</button>
+    <button class="btn danger" id="reset">Вернуть по умолчанию</button>
+  </div>
+</div>
+
+<video id="nosleep" src="nosleep.mp4" muted playsinline loop style="position:fixed;width:1px;height:1px;opacity:0;pointer-events:none"></video>
+
+<script>
+/* ================= РАСПИСАНИЕ ПО УМОЛЧАНИЮ ================= */
+const DEFAULTS = {
+  sound: true,
+  routines: [
+    {
+      id: 'morning', name: 'Утро', theme: 'morning',
+      items: [
+        { t: '07:00', e: '🌞', title: 'Просыпаемся', note: 'Умываемся и идём в туалет', c: '#FFB347' },
+        { t: '07:15', e: '🥣', title: 'Завтрак', note: 'Кушаем спокойно, не торопимся', c: '#FF8A65' },
+        { t: '07:35', e: '👕', title: 'Одеваемся', note: 'Одежда, носочки, причёска', c: '#7CC67C' },
+        { t: '07:50', e: '🪥', title: 'Чистим зубы', note: 'Чистим хорошо, все зубки', c: '#3EC6C1' },
+        { t: '08:00', e: '🎒', title: 'Выходим!', note: 'Хорошего дня!', c: '#6FA8FF' }
+      ]
+    },
+    {
+      id: 'evening', name: 'Вечер', theme: 'evening',
+      items: [
+        { t: '21:00', e: '🧩', title: 'Спокойные игры', note: 'Не прыгаем и не бегаем. Рисуем, собираем, играем тихо', c: '#7C9CFF' },
+        { t: '21:30', e: '🪥', title: 'Чистим зубы', note: '10 минут — чистим хорошо, все зубки', c: '#3EC6C1' },
+        { t: '21:40', e: '📖', title: 'Читаем книжку', note: 'Выбираем книжку и читаем вместе', c: '#F2B84B' },
+        { t: '22:00', e: '🌙', title: 'Спать', note: 'Спокойной ночи!', c: '#8A7CFF', sleep: true }
+      ]
+    }
+  ]
+};
+const BEFORE = 60;  // за сколько минут до начала показывать «скоро»
+const AFTER = 90;   // сколько минут после финала показывать экран сна / «выходим»
+const STORE = 'kidsSchedule.v1';
+
+let cfg = load();
+function load() {
+  try { const s = JSON.parse(localStorage.getItem(STORE)); if (s && s.routines) return s; } catch (e) {}
+  return JSON.parse(JSON.stringify(DEFAULTS));
+}
+function persist() { try { localStorage.setItem(STORE, JSON.stringify(cfg)); } catch (e) {} }
+
+/* ================= ВРЕМЯ ================= */
+// ?t=21:12 — для проверки: часы стартуют с этого времени и идут дальше
+let offsetMs = 0;
+(() => {
+  const q = new URLSearchParams(location.search).get('t');
+  if (q && /^\d{1,2}:\d{2}$/.test(q)) {
+    const [h, m] = q.split(':').map(Number);
+    const d = new Date(); const target = new Date(d); target.setHours(h, m, 0, 0);
+    offsetMs = target - d;
+  }
+})();
+const now = () => new Date(Date.now() + offsetMs);
+const toMin = s => { const [h, m] = s.split(':').map(Number); return h * 60 + m; };
+const mod = (a, n) => ((a % n) + n) % n;
+const pad = n => String(n).padStart(2, '0');
+const fmt = s => { const m = toMin(s); return Math.floor(m / 60) + ':' + pad(m % 60); };
+function plural(n, a, b, c) { n = Math.abs(n) % 100; const n1 = n % 10; if (n > 10 && n < 20) return c; if (n1 > 1 && n1 < 5) return b; if (n1 === 1) return a; return c; }
+const mins = n => n + ' ' + plural(n, 'минута', 'минуты', 'минут');
+
+/* ================= КАКОЕ СОСТОЯНИЕ СЕЙЧАС ================= */
+function state(d) {
+  const nowMin = d.getHours() * 60 + d.getMinutes() + d.getSeconds() / 60;
+  let best = null;
+  for (const r of cfg.routines) {
+    const its = r.items; if (its.length < 2) continue;
+    const s = toMin(its[0].t), e = toMin(its[its.length - 1].t);
+    const span = mod(e - s, 1440) || 1440;
+    const off = mod(nowMin - s, 1440);           // минут с начала
+    const until = 1440 - off;                     // минут до начала
+    let st = null;
+    if (off < span) st = { kind: 'during', prio: 3 };
+    else if (off < span + AFTER) st = { kind: 'done', prio: 1 };
+    else if (until <= BEFORE) st = { kind: 'before', prio: 2, until };
+    if (st && (!best || st.prio > best.prio)) best = { ...st, r, s, span, off };
+  }
+  if (best) return best;
+  // ничего не идёт — ищем ближайшее следующее
+  let next = null;
+  for (const r of cfg.routines) {
+    const until = mod(toMin(r.items[0].t) - nowMin, 1440);
+    if (!next || until < next.until) next = { r, until };
+  }
+  return { kind: 'idle', next };
+}
+
+/* ================= ЦИФЕРБЛАТ ================= */
+const C = 500, R = 380;
+const pt = (a, r) => [C + r * Math.sin(a * Math.PI / 180), C - r * Math.cos(a * Math.PI / 180)];
+function wedge(a0, a1, r) {
+  if (a1 - a0 >= 359.99) return `M ${C} ${C - r} A ${r} ${r} 0 1 1 ${C - 0.01} ${C - r} Z`;
+  const [x0, y0] = pt(a0, r), [x1, y1] = pt(a1, r);
+  return `M ${C} ${C} L ${x0} ${y0} A ${r} ${r} 0 ${a1 - a0 > 180 ? 1 : 0} 1 ${x1} ${y1} Z`;
+}
+function drawDial(st, idx) {
+  const { r, s, span } = st;
+  const its = r.items;
+  const handA = st.kind === 'during' ? (st.off / span) * 360 : 0;
+  const light = r.theme === 'morning';
+  const ink = light ? '#3a2a1a' : '#ffffff';
+  let g = '';
+  // фон
+  g += `<circle cx="${C}" cy="${C}" r="${R + 14}" fill="${light ? 'rgba(255,255,255,.6)' : 'rgba(255,255,255,.06)'}"/>`;
+  // секторы
+  for (let i = 0; i < its.length - 1; i++) {
+    const a0 = mod(toMin(its[i].t) - s, 1440) / span * 360;
+    const a1 = mod(toMin(its[i + 1].t) - s, 1440) / span * 360 || 360;
+    const past = st.kind === 'during' && i < idx;
+    const cur = st.kind === 'during' && i === idx;
+    const op = past ? 0.22 : cur ? 1 : 0.7;
+    g += `<path d="${wedge(a0, a1, R)}" fill="${its[i].c}" opacity="${op}" stroke="${light ? '#fff4e3' : '#141a3a'}" stroke-width="8"/>`;
+    if (cur && handA > a0) g += `<path d="${wedge(a0, handA, R)}" fill="${light ? 'rgba(255,255,255,.55)' : 'rgba(10,14,40,.55)'}"/>`;
+    // значок в середине сектора
+    const mid = (a0 + a1) / 2, size = Math.min(150, Math.max(70, (a1 - a0) * 2.2));
+    const [ex, ey] = pt(mid, R * 0.64);
+    g += `<text x="${ex}" y="${ey}" font-size="${cur ? size * 1.15 : size}" text-anchor="middle" dominant-baseline="central" opacity="${past ? 0.35 : 1}">${its[i].e}</text>`;
+  }
+  // деления каждые 5 минут
+  for (let m = 0; m <= span; m += 5) {
+    const a = m / span * 360, big = m % 15 === 0;
+    const [x0, y0] = pt(a, R + 18), [x1, y1] = pt(a, R + (big ? 42 : 30));
+    g += `<line x1="${x0}" y1="${y0}" x2="${x1}" y2="${y1}" stroke="${ink}" stroke-opacity=".45" stroke-width="${big ? 6 : 3}" stroke-linecap="round"/>`;
+  }
+  // время на границах
+  for (let i = 0; i < its.length; i++) {
+    const a = i === its.length - 1 ? 360 : mod(toMin(its[i].t) - s, 1440) / span * 360;
+    const [tx, ty] = pt(a === 360 ? 0 : a, R + 82);
+    if (i === its.length - 1 && its.length > 1) {
+      // финал совпадает с началом на круге — пишем рядом
+      g += `<text x="${tx}" y="${ty - 4}" font-size="36" font-weight="800" fill="${ink}" text-anchor="middle" dominant-baseline="central">${fmt(its[0].t)} · ${its[i].e} ${fmt(its[i].t)}</text>`;
+    } else if (i > 0) {
+      g += `<text x="${tx}" y="${ty}" font-size="40" font-weight="800" fill="${ink}" text-anchor="middle" dominant-baseline="central">${fmt(its[i].t)}</text>`;
+    }
+  }
+  // стрелка
+  if (st.kind === 'during') {
+    g += `<g transform="rotate(${handA} ${C} ${C})">
+      <line x1="${C}" y1="${C + 40}" x2="${C}" y2="${C - R - 30}" stroke="${light ? '#3a2a1a' : '#fff'}" stroke-width="16" stroke-linecap="round"/>
+      <circle cx="${C}" cy="${C - R - 30}" r="22" fill="#ffd25e" stroke="${light ? '#3a2a1a' : '#fff'}" stroke-width="8"/>
+    </g>`;
+  }
+  g += `<circle cx="${C}" cy="${C}" r="36" fill="${light ? '#3a2a1a' : '#fff'}"/>`;
+  document.getElementById('dial').innerHTML = g;
+}
+
+/* ================= ОТРИСОВКА ================= */
+let lastKey = null, warnedKey = null;
+function show(id) {
+  for (const s of ['main', 'done', 'idle']) document.getElementById(s).classList.toggle('on', s === id);
+}
+function tick() {
+  const d = now();
+  const st = state(d);
+  const hhmm = d.getHours() + ':' + pad(d.getMinutes());
+  document.body.classList.toggle('morning', st.r ? st.r.theme === 'morning' : d.getHours() < 14);
+  document.body.classList.toggle('sleep', st.kind === 'done' && !!st.r.items[st.r.items.length - 1].sleep);
+
+  if (st.kind === 'idle') {
+    show('idle');
+    document.getElementById('iClock').textContent = hhmm;
+    const n = st.next;
+    document.getElementById('iNote').textContent = n ? `Следующее: ${n.r.items[0].e} ${n.r.name} в ${fmt(n.r.items[0].t)}` : '';
+    lastKey = 'idle';
+    return;
+  }
+  const its = st.r.items;
+
+  if (st.kind === 'done') {
+    show('done');
+    const f = its[its.length - 1];
+    document.getElementById('dEm').textContent = f.e;
+    document.getElementById('dTitle').textContent = f.title;
+    document.getElementById('dNote').textContent = f.note || '';
+    const key = st.r.id + ':done';
+    if (lastKey && lastKey !== key) chime(true);
+    lastKey = key;
+    return;
+  }
+
+  show('main');
+  document.getElementById('clock').innerHTML = `${hhmm}<small>${st.r.name}</small>`;
+  const card = document.getElementById('card');
+  let idx = 0;
+  if (st.kind === 'during') {
+    for (let i = 0; i < its.length - 1; i++) if (mod(toMin(its[i].t) - st.s, 1440) <= st.off) idx = i;
+  }
+  const it = its[idx];
+  drawDial(st, idx);
+  card.style.setProperty('--accent', it.c);
+  document.getElementById('cEm').textContent = it.e;
+  document.getElementById('cNote').textContent = it.note || '';
+  const bar = document.getElementById('cBar');
+  const soon = document.getElementById('soon');
+
+  if (st.kind === 'before') {
+    const left = Math.ceil(st.until);
+    document.getElementById('cTitle').textContent = 'Скоро: ' + it.title;
+    document.getElementById('cLeft').innerHTML = `начнём через <b>${left}</b> ${plural(left, 'минуту', 'минуты', 'минут')}`;
+    bar.style.width = (100 - st.until / BEFORE * 100) + '%';
+    soon.classList.remove('on');
+  } else {
+    const a = mod(toMin(it.t) - st.s, 1440), b = mod(toMin(its[idx + 1].t) - st.s, 1440) || st.span;
+    const leftExact = b - st.off, left = Math.ceil(leftExact);
+    document.getElementById('cTitle').textContent = it.title;
+    document.getElementById('cLeft').innerHTML = `осталось <b>${left}</b> ${plural(left, 'минута', 'минуты', 'минут')}`;
+    bar.style.width = ((st.off - a) / (b - a) * 100) + '%';
+    const nx = its[idx + 1];
+    if (leftExact <= 2) {
+      soon.textContent = `Скоро: ${nx.e} ${nx.title}`;
+      soon.classList.add('on');
+      const wk = st.r.id + ':' + idx;
+      if (warnedKey !== wk) { warnedKey = wk; chime(false, true); }
+    } else soon.classList.remove('on');
+  }
+  // список дальше
+  const ul = document.getElementById('next');
+  ul.innerHTML = its.slice(idx + 1, soon.classList.contains('on') ? idx + 2 : idx + 4).map(x => `<li><span class="t">${fmt(x.t)}</span><span class="e">${x.e}</span><span>${x.title}</span></li>`).join('');
+
+  const key = st.r.id + ':' + st.kind + ':' + idx;
+  if (lastKey && lastKey !== key && st.kind === 'during') {
+    card.classList.remove('pulse'); void card.offsetWidth; card.classList.add('pulse');
+    chime(true);
+  }
+  lastKey = key;
+}
+
+/* ================= ЗВУК ================= */
+let ac = null;
+function chime(main, soft) {
+  if (!cfg.sound || !ac) return;
+  const notes = soft ? [880] : main ? [660, 880, 1046] : [880];
+  notes.forEach((f, i) => {
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.type = 'sine'; o.frequency.value = f;
+    const t = ac.currentTime + i * 0.28;
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(soft ? 0.12 : 0.25, t + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 1.6);
+    o.connect(g).connect(ac.destination); o.start(t); o.stop(t + 1.7);
+  });
+}
+
+/* ================= ЭКРАН НЕ ГАСНЕТ ================= */
+let lock = null;
+const awakeEl = document.getElementById('awake');
+async function keepAwake() {
+  let ok = false;
+  if ('wakeLock' in navigator) {
+    try {
+      lock = await navigator.wakeLock.request('screen');
+      ok = true;
+      lock.addEventListener('release', () => { awakeEl.textContent = ''; });
+    } catch (e) {}
+  }
+  // запасной способ для старых iPadOS — беззвучное невидимое видео
+  try { await document.getElementById('nosleep').play(); ok = true; } catch (e) {}
+  awakeEl.textContent = ok ? '☀︎ экран не гаснет' : '⚠︎ экран может погаснуть';
+}
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && !document.getElementById('start').classList.contains('on')) keepAwake(); });
+
+document.getElementById('startBtn').addEventListener('click', () => {
+  try { ac = new (window.AudioContext || window.webkitAudioContext)(); ac.resume(); } catch (e) {}
+  keepAwake();
+  const el = document.documentElement;
+  const standalone = navigator.standalone || matchMedia('(display-mode: standalone), (display-mode: fullscreen)').matches;
+  if (!standalone) { try { (el.requestFullscreen || el.webkitRequestFullscreen).call(el); } catch (e) {} }
+  document.getElementById('start').classList.remove('on');
+  lastKey = null;
+  tick();
+});
+
+/* ================= ЗВЁЗДЫ ================= */
+(() => {
+  const s = document.getElementById('stars'); let h = '';
+  for (let i = 0; i < 60; i++) h += `<i style="left:${Math.random() * 100}%;top:${Math.random() * 100}%;animation-delay:${Math.random() * 3}s"></i>`;
+  s.innerHTML = h;
+})();
+
+/* ================= НАСТРОЙКИ (долгое нажатие на ⚙️) ================= */
+const gear = document.getElementById('gear');
+let holdT = null;
+const startHold = e => { e.preventDefault(); gear.classList.add('hold'); holdT = setTimeout(openSettings, 1200); };
+const endHold = () => { gear.classList.remove('hold'); clearTimeout(holdT); };
+gear.addEventListener('pointerdown', startHold);
+['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => gear.addEventListener(ev, endHold));
+
+let draft = null, tab = 0;
+function openSettings() {
+  endHold();
+  draft = JSON.parse(JSON.stringify(cfg));
+  document.getElementById('soundOn').checked = !!draft.sound;
+  renderSettings();
+  document.getElementById('settings').classList.add('on');
+}
+const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+function renderSettings() {
+  document.getElementById('tabs').innerHTML = draft.routines.map((r, i) => `<button class="${i === tab ? 'on' : ''}" data-i="${i}">${r.name}</button>`).join('');
+  const its = draft.routines[tab].items;
+  document.getElementById('rows').innerHTML = its.map((x, i) => `
+    <tr class="${i === its.length - 1 ? 'final' : ''}" data-i="${i}">
+      <td><input type="time" data-k="t" value="${esc(x.t)}"></td>
+      <td><input class="emo" data-k="e" value="${esc(x.e)}"></td>
+      <td><input data-k="title" value="${esc(x.title)}"></td>
+      <td><input data-k="note" value="${esc(x.note)}"></td>
+      <td><input type="color" data-k="c" value="${esc(x.c)}"></td>
+      <td>${its.length > 2 ? `<button class="btn danger" data-del="${i}">✕</button>` : ''}</td>
+    </tr>`).join('');
+}
+document.getElementById('tabs').addEventListener('click', e => { const i = e.target.dataset.i; if (i != null) { tab = +i; renderSettings(); } });
+document.getElementById('rows').addEventListener('input', e => {
+  const k = e.target.dataset.k; if (!k) return;
+  const i = +e.target.closest('tr').dataset.i;
+  draft.routines[tab].items[i][k] = e.target.value;
+});
+document.getElementById('rows').addEventListener('click', e => {
+  const d = e.target.dataset.del; if (d == null) return;
+  draft.routines[tab].items.splice(+d, 1); renderSettings();
+});
+document.getElementById('addRow').onclick = () => {
+  const its = draft.routines[tab].items;
+  const last = its[its.length - 1];
+  const prev = its[its.length - 2];
+  its.splice(its.length - 1, 0, { t: prev ? prev.t : last.t, e: '⭐', title: 'Новый шаг', note: '', c: '#9adf7c' });
+  renderSettings();
+};
+document.getElementById('soundOn').onchange = e => { draft.sound = e.target.checked; };
+document.getElementById('save').onclick = () => {
+  for (const r of draft.routines) {
+    if (r.items.some(x => !/^\d{1,2}:\d{2}$/.test(x.t))) { alert('Проверьте время в расписании «' + r.name + '»'); return; }
+  }
+  cfg = draft; persist(); closeSettings();
+};
+document.getElementById('cancel').onclick = closeSettings;
+document.getElementById('reset').onclick = () => {
+  if (confirm('Вернуть расписание по умолчанию?')) { cfg = JSON.parse(JSON.stringify(DEFAULTS)); persist(); closeSettings(); }
+};
+function closeSettings() { document.getElementById('settings').classList.remove('on'); lastKey = null; tick(); }
+
+/* ================= ЗАПУСК ================= */
+tick();
+setInterval(tick, 1000);
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+</script>
+</body>
+</html>
