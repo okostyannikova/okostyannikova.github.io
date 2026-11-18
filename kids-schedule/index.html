@@ -42,33 +42,33 @@
   .screen.on { display: flex; }
 
   /* ---------- главный экран ---------- */
-  #main { align-items: center; justify-content: center; gap: 3vw; padding-left: 3vw; padding-right: 3vw; }
-  #dialWrap { height: min(86vh, 50vw); aspect-ratio: 1; flex: none; }
+  #main { align-items: center; justify-content: center; gap: 2.5vw; padding-left: 2vw; padding-right: 2.5vw; }
+  #dialWrap { height: min(95vh, 62vw); aspect-ratio: 1; flex: none; }
   #dial { width: 100%; height: 100%; overflow: visible; }
-  #panel { flex: 1; min-width: 0; max-width: 50vw; max-height: 96vh; display: flex; flex-direction: column; gap: 1.8vh; }
+  #panel { flex: 1; min-width: 0; max-width: 40vw; max-height: 96vh; display: flex; flex-direction: column; gap: 1.8vh; }
   .clock { font-size: min(8vh, 5.5vw); font-weight: 800; letter-spacing: .02em; font-variant-numeric: tabular-nums; line-height: 1; }
   .clock small { font-size: .38em; font-weight: 600; color: var(--muted); margin-left: .5em; letter-spacing: 0; }
   .card {
-    background: var(--card); border-radius: 4vh; padding: 3vh 2.6vw;
+    background: var(--card); border-radius: 4vh; padding: 2.6vh 2vw;
     border: .6vh solid var(--accent);
     box-shadow: 0 2vh 6vh rgba(0,0,0,.25);
   }
-  .card .em { font-size: min(11vh, 8vw); line-height: 1.1; }
-  .card .title { font-size: min(6.4vh, 4.2vw); font-weight: 800; line-height: 1.1; margin-top: 1vh; }
-  .card .note { font-size: min(3.1vh, 2.2vw); color: var(--muted); margin-top: 1.2vh; line-height: 1.3; }
-  .card .left { font-size: min(3.8vh, 2.6vw); margin-top: 2vh; font-weight: 700; }
+  .card .em { font-size: min(10vh, 6.5vw); line-height: 1.1; }
+  .card .title { font-size: min(6vh, 3.6vw); font-weight: 800; line-height: 1.1; margin-top: 1vh; }
+  .card .note { font-size: min(3vh, 1.9vw); color: var(--muted); margin-top: 1.2vh; line-height: 1.3; }
+  .card .left { font-size: min(3.6vh, 2.3vw); margin-top: 2vh; font-weight: 700; }
   .card .left b { font-size: 1.5em; color: var(--accent); }
   .bar { height: 2vh; background: rgba(127,127,127,.25); border-radius: 1vh; margin-top: 1.4vh; overflow: hidden; }
   .bar i { display: block; height: 100%; width: 0; background: var(--accent); border-radius: 1vh; transition: width 1s linear; }
   .pulse { animation: pulse 1.2s ease-out 2; }
   @keyframes pulse { 0% { transform: scale(1); } 30% { transform: scale(1.06); } 100% { transform: scale(1); } }
 
-  .soon { font-size: min(3.4vh, 2.3vw); font-weight: 700; background: #ffd25e; color: #3a2a00; border-radius: 2vh; padding: 1.4vh 2vw; display: none; }
+  .soon { font-size: min(3.2vh, 2vw); font-weight: 700; background: #ffd25e; color: #3a2a00; border-radius: 2vh; padding: 1.4vh 2vw; display: none; }
   .soon.on { display: block; animation: blink 2s ease-in-out infinite; }
   @keyframes blink { 50% { opacity: .6; } }
 
   .next { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 1vh; }
-  .next li { display: flex; align-items: center; gap: 1.2vw; font-size: min(3.4vh, 2.3vw); color: var(--muted); }
+  .next li { display: flex; align-items: center; gap: 1vw; font-size: min(3.2vh, 2vw); color: var(--muted); }
   .next li .t { font-variant-numeric: tabular-nums; font-weight: 700; min-width: 4.2em; }
   .next li .e { font-size: 1.3em; }
 
@@ -272,62 +272,86 @@ function state(d) {
   return { kind: 'idle', next };
 }
 
-/* ================= ЦИФЕРБЛАТ ================= */
-const C = 500, R = 380;
+/* ================= ЦИФЕРБЛАТ (настоящие часы) ================= */
+const C = 500, R = 470;
 const pt = (a, r) => [C + r * Math.sin(a * Math.PI / 180), C - r * Math.cos(a * Math.PI / 180)];
+const signed = x => mod(x + 720, 1440) - 720;
 function wedge(a0, a1, r) {
   if (a1 - a0 >= 359.99) return `M ${C} ${C - r} A ${r} ${r} 0 1 1 ${C - 0.01} ${C - r} Z`;
   const [x0, y0] = pt(a0, r), [x1, y1] = pt(a1, r);
   return `M ${C} ${C} L ${x0} ${y0} A ${r} ${r} 0 ${a1 - a0 > 180 ? 1 : 0} 1 ${x1} ${y1} Z`;
 }
-function drawDial(st, idx) {
-  const { r, s, span } = st;
-  const its = r.items;
-  const handA = st.kind === 'during' ? (st.off / span) * 360 : 0;
-  const light = r.theme === 'morning';
+function drawDial(st, d) {
+  const its = st.r.items;
+  const light = st.r.theme === 'morning';
+  const face = light ? '#fffaf2' : '#1c2452';
   const ink = light ? '#3a2a1a' : '#ffffff';
+  const h = d.getHours(), m = d.getMinutes(), s = d.getSeconds();
+  const nowMin = h * 60 + m + s / 60;
+  const mh = m + s / 60;                 // где сейчас минутная стрелка (0–60)
   let g = '';
-  // фон
-  g += `<circle cx="${C}" cy="${C}" r="${R + 14}" fill="${light ? 'rgba(255,255,255,.6)' : 'rgba(255,255,255,.06)'}"/>`;
-  // секторы
+  // корпус и циферблат
+  g += `<circle cx="${C}" cy="${C}" r="${R + 22}" fill="${light ? '#e9d7bf' : '#0b1030'}"/>`;
+  g += `<circle cx="${C}" cy="${C}" r="${R}" fill="${face}"/>`;
+
+  // цветные секторы: только то, что попадает в ближайшие 60 минут
+  const icons = [];
   for (let i = 0; i < its.length - 1; i++) {
-    const a0 = mod(toMin(its[i].t) - s, 1440) / span * 360;
-    const a1 = mod(toMin(its[i + 1].t) - s, 1440) / span * 360 || 360;
-    const past = st.kind === 'during' && i < idx;
-    const cur = st.kind === 'during' && i === idx;
-    const op = past ? 0.22 : cur ? 1 : 0.7;
-    g += `<path d="${wedge(a0, a1, R)}" fill="${its[i].c}" opacity="${op}" stroke="${light ? '#fff4e3' : '#141a3a'}" stroke-width="8"/>`;
-    if (cur && handA > a0) g += `<path d="${wedge(a0, handA, R)}" fill="${light ? 'rgba(255,255,255,.55)' : 'rgba(10,14,40,.55)'}"/>`;
-    // значок в середине сектора
-    const mid = (a0 + a1) / 2, size = Math.min(150, Math.max(70, (a1 - a0) * 2.2));
-    const [ex, ey] = pt(mid, R * 0.64);
-    g += `<text x="${ex}" y="${ey}" font-size="${cur ? size * 1.15 : size}" text-anchor="middle" dominant-baseline="central" opacity="${past ? 0.35 : 1}">${its[i].e}</text>`;
-  }
-  // деления каждые 5 минут
-  for (let m = 0; m <= span; m += 5) {
-    const a = m / span * 360, big = m % 15 === 0;
-    const [x0, y0] = pt(a, R + 18), [x1, y1] = pt(a, R + (big ? 42 : 30));
-    g += `<line x1="${x0}" y1="${y0}" x2="${x1}" y2="${y1}" stroke="${ink}" stroke-opacity=".45" stroke-width="${big ? 6 : 3}" stroke-linecap="round"/>`;
-  }
-  // время на границах
-  for (let i = 0; i < its.length; i++) {
-    const a = i === its.length - 1 ? 360 : mod(toMin(its[i].t) - s, 1440) / span * 360;
-    const [tx, ty] = pt(a === 360 ? 0 : a, R + 82);
-    if (i === its.length - 1 && its.length > 1) {
-      // финал совпадает с началом на круге — пишем рядом
-      g += `<text x="${tx}" y="${ty - 4}" font-size="36" font-weight="800" fill="${ink}" text-anchor="middle" dominant-baseline="central">${fmt(its[0].t)} · ${its[i].e} ${fmt(its[i].t)}</text>`;
-    } else if (i > 0) {
-      g += `<text x="${tx}" y="${ty}" font-size="40" font-weight="800" fill="${ink}" text-anchor="middle" dominant-baseline="central">${fmt(its[i].t)}</text>`;
+    const rel0 = signed(toMin(its[i].t) - nowMin);
+    const dur = mod(toMin(its[i + 1].t) - toMin(its[i].t), 1440);
+    const x0 = Math.max(rel0, 0), x1 = Math.min(rel0 + dur, 60);
+    if (x1 - x0 <= 0) continue;
+    const cur = rel0 <= 0;
+    const a0 = (mh + x0) * 6, a1 = (mh + x1) * 6;
+    g += `<path d="${wedge(a0, a1, R - 4)}" fill="${its[i].c}" opacity="${cur ? 1 : 0.8}" stroke="${face}" stroke-width="6"/>`;
+    if (x1 - x0 >= 4) {
+      const size = Math.min(cur ? 150 : 120, 40 + (x1 - x0) * 9);
+      const [ex, ey] = pt((a0 + a1) / 2, 230);
+      icons.push(`<text x="${ex}" y="${ey}" font-size="${size}" text-anchor="middle" dominant-baseline="central">${its[i].e}</text>`);
     }
   }
-  // стрелка
-  if (st.kind === 'during') {
-    g += `<g transform="rotate(${handA} ${C} ${C})">
-      <line x1="${C}" y1="${C + 40}" x2="${C}" y2="${C - R - 30}" stroke="${light ? '#3a2a1a' : '#fff'}" stroke-width="16" stroke-linecap="round"/>
-      <circle cx="${C}" cy="${C - R - 30}" r="22" fill="#ffd25e" stroke="${light ? '#3a2a1a' : '#fff'}" stroke-width="8"/>
-    </g>`;
+  // значок финала (🌙 / 🎒) — сразу за его границей
+  const f = its[its.length - 1];
+  const relF = signed(toMin(f.t) - nowMin);
+  if (relF > 0 && relF <= 60) {
+    const a = (mh + relF) * 6;
+    const [bx, by] = pt(a + 14, 215);
+    icons.push(`<circle cx="${bx}" cy="${by}" r="58" fill="${face}" stroke="${f.c}" stroke-width="10"/>`);
+    icons.push(`<text x="${bx}" y="${by + 3}" font-size="70" text-anchor="middle" dominant-baseline="central">${f.e}</text>`);
+    const [lx0, ly0] = pt(a, 60), [lx1, ly1] = pt(a, R - 4);
+    g += `<line x1="${lx0}" y1="${ly0}" x2="${lx1}" y2="${ly1}" stroke="${f.c}" stroke-width="10" stroke-linecap="round"/>`;
   }
-  g += `<circle cx="${C}" cy="${C}" r="36" fill="${light ? '#3a2a1a' : '#fff'}"/>`;
+  g += icons.join('');
+
+  // 60 делений
+  for (let i = 0; i < 60; i++) {
+    const big = i % 5 === 0;
+    const [x0, y0] = pt(i * 6, R - (big ? 48 : 26)), [x1, y1] = pt(i * 6, R - 8);
+    g += `<line x1="${x0}" y1="${y0}" x2="${x1}" y2="${y1}" stroke="${ink}" stroke-width="${big ? 11 : 5}" stroke-linecap="round" stroke-opacity="${big ? 1 : 0.75}"/>`;
+  }
+  // цифры 1–12
+  for (let n = 1; n <= 12; n++) {
+    const [x, y] = pt(n * 30, R - 115);
+    g += `<text x="${x}" y="${y + 4}" font-size="88" font-weight="800" fill="${ink}" stroke="${face}" stroke-width="14" paint-order="stroke" stroke-linejoin="round" text-anchor="middle" dominant-baseline="central">${n}</text>`;
+  }
+
+  // стрелки
+  const ha = ((h % 12) + mh / 60) * 30, ma = mh * 6, sa = s * 6;
+  const handCol = light ? '#3a2a1a' : '#ffffff', outline = light ? '#fffaf2' : '#0b1030';
+  // часовая
+  g += `<g transform="rotate(${ha} ${C} ${C})">
+    <path d="M ${C - 22} ${C + 40} L ${C - 16} ${C - 230} L ${C} ${C - 270} L ${C + 16} ${C - 230} L ${C + 22} ${C + 40} Z" fill="${handCol}" stroke="${outline}" stroke-width="8" stroke-linejoin="round"/>
+  </g>`;
+  // минутная (с жёлтым кончиком)
+  g += `<g transform="rotate(${ma} ${C} ${C})">
+    <path d="M ${C - 15} ${C + 50} L ${C - 11} ${C - 330} L ${C} ${C - 420} L ${C + 11} ${C - 330} L ${C + 15} ${C + 50} Z" fill="${handCol}" stroke="${outline}" stroke-width="8" stroke-linejoin="round"/>
+    <path d="M ${C - 11} ${C - 330} L ${C} ${C - 420} L ${C + 11} ${C - 330} Z" fill="#ffc533"/>
+  </g>`;
+  // секундная
+  g += `<g transform="rotate(${sa} ${C} ${C})">
+    <line x1="${C}" y1="${C + 70}" x2="${C}" y2="${C - 430}" stroke="#ff5a5a" stroke-width="6" stroke-linecap="round"/>
+  </g>`;
+  g += `<circle cx="${C}" cy="${C}" r="26" fill="#ff5a5a" stroke="${outline}" stroke-width="6"/>`;
   document.getElementById('dial').innerHTML = g;
 }
 
@@ -373,7 +397,7 @@ function tick() {
     for (let i = 0; i < its.length - 1; i++) if (mod(toMin(its[i].t) - st.s, 1440) <= st.off) idx = i;
   }
   const it = its[idx];
-  drawDial(st, idx);
+  drawDial(st, d);
   card.style.setProperty('--accent', it.c);
   document.getElementById('cEm').textContent = it.e;
   document.getElementById('cNote').textContent = it.note || '';
