@@ -43,7 +43,7 @@
 
   /* ---------- главный экран ---------- */
   #main { align-items: center; justify-content: center; gap: 2.5vw; padding-left: 2vw; padding-right: 2.5vw; }
-  #dialWrap { height: min(84vh, 70vw); aspect-ratio: 1; flex: none; }
+  #dialWrap { height: min(97vh, 72vw); aspect-ratio: 1; flex: none; }
   #dial { width: 100%; height: 100%; overflow: visible; }
   #panel { flex: 1; min-width: 0; max-width: 40vw; max-height: 96vh; display: flex; flex-direction: column; gap: 1.8vh; }
   #panel, #awake, .stars { display: none !important; }
@@ -80,7 +80,7 @@
   #done .title { font-size: 9vh; font-weight: 800; margin-top: 2vh; }
   #done .note { font-size: 4vh; color: var(--muted); margin-top: 1vh; }
   body.sleep { --bg: #05060f; --bg2: #0d1026; }
-  body.sleep #main { filter: brightness(.7); }
+  
   .stars { position: fixed; inset: 0; pointer-events: none; display: none; }
   body.sleep .stars { display: block; }
   .stars i { position: absolute; width: .5vh; height: .5vh; border-radius: 50%; background: #fff; opacity: .6; animation: tw 3s ease-in-out infinite; }
@@ -254,15 +254,6 @@ function drawDial(st, d) {
   g += `<circle cx="${C}" cy="${C}" r="${R + 22}" fill="${outline}"/>`;
   g += `<circle cx="${C}" cy="${C}" r="${R}" fill="${face}"/>`;
 
-  // сон: от финала до «до» (например, 22:00 → 8:00)
-  const f = its[its.length - 1];
-  if (f.until) {
-    const a0 = hourAngle(f.t), sweep = Math.min(360, mod(toMin(f.until) - toMin(f.t), 1440) / 2);
-    g += `<path d="${wedge(a0, a0 + sweep, R - 4)}" fill="${f.c}" opacity=".35"/>`;
-    const [mx, my] = pt(a0 + sweep / 2, 240);
-    g += `<text x="${mx}" y="${my}" font-size="130" text-anchor="middle" dominant-baseline="central">${f.e}</text>`;
-  }
-
   // занятия
   const mids = [];
   for (let i = 0; i < its.length - 1; i++) {
@@ -273,18 +264,25 @@ function drawDial(st, d) {
     g += `<path d="${wedge(a0, a0 + sweep, R - 4)}" fill="${its[i].c}" stroke="${cur ? '#ffffff' : face}" stroke-width="${cur ? 8 : 4}" stroke-linejoin="round"/>`;
     mids.push({ a: a0 + sweep / 2, e: its[i].e, c: its[i].c, cur });
   }
+  const f = its[its.length - 1];
+  const fa = hourAngle(f.t);
+  {
+    const [x0, y0] = pt(fa, 0), [x1, y1] = pt(fa, R - 4);
+    g += `<line x1="${x0}" y1="${y0}" x2="${x1}" y2="${y1}" stroke="${f.c}" stroke-width="10" stroke-linecap="round"/>`;
+  }
+  mids.push({ a: fa, e: f.e, c: f.c, cur: mod(nowMin - toMin(f.t), 1440) < (f.until ? mod(toMin(f.until) - toMin(f.t), 1440) : 90) });
 
   // значки занятий снаружи циферблата, с линиями к своему сегменту
   const pos = mids.map(x => x.a);
-  for (let i = 1; i < pos.length; i++) if (pos[i] - pos[i - 1] < 24) pos[i] = pos[i - 1] + 24;
-  const shift = (mids.reduce((t, x) => t + x.a, 0) - pos.reduce((t, x) => t + x, 0)) / (pos.length || 1);
+  for (let i = 1; i < pos.length; i++) if (pos[i] - pos[i - 1] < 20) pos[i] = pos[i - 1] + 20;
+  const shift = (mids.reduce((t, x) => t + x.a, 0) - pos.reduce((t, x) => t + x, 0)) / (pos.length || 1) - 10; // чуть ниже, чтобы верхний значок не уходил за экран
   mids.forEach((x, i) => {
     const pa = pos[i] + shift;
-    const [lx0, ly0] = pt(x.a, R - 20), [lx1, ly1] = pt(pa, 560);
-    const [ix, iy] = pt(pa, 610);
+    const [lx0, ly0] = pt(x.a, R - 20), [lx1, ly1] = pt(pa, 535);
+    const [ix, iy] = pt(pa, 582);
     g += `<line x1="${lx0}" y1="${ly0}" x2="${lx1}" y2="${ly1}" stroke="${x.c}" stroke-width="6" stroke-linecap="round"/>`;
-    g += `<circle cx="${ix}" cy="${iy}" r="${x.cur ? 62 : 54}" fill="${face}" stroke="${x.cur ? '#ffffff' : x.c}" stroke-width="${x.cur ? 10 : 8}"/>`;
-    g += `<text x="${ix}" y="${iy + 3}" font-size="${x.cur ? 72 : 62}" text-anchor="middle" dominant-baseline="central">${x.e}</text>`;
+    g += `<circle cx="${ix}" cy="${iy}" r="${x.cur ? 54 : 48}" fill="${face}" stroke="${x.cur ? '#ffffff' : x.c}" stroke-width="${x.cur ? 10 : 8}"/>`;
+    g += `<text x="${ix}" y="${iy + 3}" font-size="${x.cur ? 62 : 54}" text-anchor="middle" dominant-baseline="central">${x.e}</text>`;
   });
 
   // 60 делений
