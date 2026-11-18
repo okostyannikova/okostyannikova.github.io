@@ -296,19 +296,23 @@ function drawDial(st, d) {
     g += `<text x="${x}" y="${y + 4}" font-size="88" font-weight="800" fill="${ink}" stroke="${face}" stroke-width="14" paint-order="stroke" stroke-linejoin="round" text-anchor="middle" dominant-baseline="central">${n}</text>`;
   }
 
-  // стрелки: часовая (с жёлтым кончиком — она показывает на сегменты), минутная, секундная
+  // стрелки: часовая — тёмно-синяя с жёлтым кончиком (показывает на сегменты), минутная — красная, секундная — оранжевая
   const ha = ((h % 12) + (m + s / 60) / 60) * 30, ma = (m + s / 60) * 6, sa = s * 6;
-  g += `<g transform="rotate(${ma} ${C} ${C})">
-    <path d="M ${C - 13} ${C + 50} L ${C - 10} ${C - 340} L ${C} ${C - 425} L ${C + 10} ${C - 340} L ${C + 13} ${C + 50} Z" fill="${ink}" stroke="${face}" stroke-width="8" stroke-linejoin="round"/>
+  const HOUR = '#1f3c88', MIN = '#d63a3a', SEC = '#f28c18';
+  g += `<defs><filter id="sh" x="-50%" y="-50%" width="200%" height="200%"><feDropShadow dx="0" dy="6" stdDeviation="7" flood-color="#000" flood-opacity=".35"/></filter></defs>`;
+  g += `<g transform="rotate(${ma} ${C} ${C})" filter="url(#sh)">
+    <path d="M ${C - 15} ${C + 55} L ${C - 11} ${C - 340} L ${C} ${C - 428} L ${C + 11} ${C - 340} L ${C + 15} ${C + 55} Z" fill="${MIN}" stroke="#fff" stroke-width="6" stroke-linejoin="round"/>
   </g>`;
-  g += `<g transform="rotate(${ha} ${C} ${C})">
-    <path d="M ${C - 26} ${C + 40} L ${C - 20} ${C - 220} L ${C} ${C - 290} L ${C + 20} ${C - 220} L ${C + 26} ${C + 40} Z" fill="${ink}" stroke="${face}" stroke-width="8" stroke-linejoin="round"/>
-    <path d="M ${C - 20} ${C - 220} L ${C} ${C - 290} L ${C + 20} ${C - 220} Z" fill="#ffc533"/>
+  g += `<g transform="rotate(${ha} ${C} ${C})" filter="url(#sh)">
+    <path d="M ${C - 32} ${C + 45} L ${C - 25} ${C - 215} L ${C} ${C - 295} L ${C + 25} ${C - 215} L ${C + 32} ${C + 45} Z" fill="${HOUR}" stroke="#fff" stroke-width="7" stroke-linejoin="round"/>
+    <path d="M ${C - 25} ${C - 215} L ${C} ${C - 295} L ${C + 25} ${C - 215} Z" fill="#ffc533" stroke="#fff" stroke-width="5" stroke-linejoin="round"/>
   </g>`;
   g += `<g transform="rotate(${sa} ${C} ${C})">
-    <line x1="${C}" y1="${C + 70}" x2="${C}" y2="${C - 430}" stroke="#ff5a5a" stroke-width="6" stroke-linecap="round"/>
+    <line x1="${C}" y1="${C + 70}" x2="${C}" y2="${C - 435}" stroke="${SEC}" stroke-width="6" stroke-linecap="round"/>
+    <circle cx="${C}" cy="${C + 70}" r="12" fill="${SEC}"/>
   </g>`;
-  g += `<circle cx="${C}" cy="${C}" r="28" fill="#ff5a5a" stroke="${face}" stroke-width="6"/>`;
+  g += `<circle cx="${C}" cy="${C}" r="30" fill="${HOUR}" stroke="#fff" stroke-width="6"/>`;
+  g += `<circle cx="${C}" cy="${C}" r="10" fill="${SEC}"/>`;
   document.getElementById('dial').innerHTML = g;
 }
 

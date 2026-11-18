@@ -1,5 +1,5 @@
 // Офлайн-кэш: сразу отдаём из кэша, в фоне обновляем (новая версия подхватится при следующем запуске)
-const CACHE = 'kids-schedule-v10';
+const CACHE = 'kids-schedule-v11';
 const FILES = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './apple-touch-icon.png', './nosleep.mp4'];
 
 self.addEventListener('install', e => {
