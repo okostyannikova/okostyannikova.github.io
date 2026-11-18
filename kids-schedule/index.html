@@ -176,9 +176,9 @@ const DEFAULTS = {
     {
       id: 'evening', name: 'Вечер', theme: 'evening',
       items: [
-        { t: '21:00', e: '🧩', title: 'Спокойные игры', note: 'Не прыгаем и не бегаем. Рисуем, собираем, играем тихо', c: '#7C9CFF' },
-        { t: '21:30', e: '🪥', title: 'Чистим зубы', note: '10 минут — чистим хорошо, все зубки', c: '#3EC6C1' },
-        { t: '21:40', e: '📖', title: 'Читаем книжку', note: 'Выбираем книжку и читаем вместе', c: '#F2B84B' },
+        { t: '21:00', e: '🧩', title: 'Спокойные игры', note: 'Не прыгаем и не бегаем. Рисуем, собираем, играем тихо', c: '#30D158' },
+        { t: '21:30', e: '🪥', title: 'Чистим зубы', note: '10 минут — чистим хорошо, все зубки', c: '#0AC8FF' },
+        { t: '21:40', e: '📖', title: 'Читаем книжку', note: 'Выбираем книжку и читаем вместе', c: '#FF5FA2' },
         { t: '22:00', e: '🌙', title: 'Спать', note: 'Спокойной ночи!', c: '#8A7CFF', sleep: true, until: '08:00' }
       ]
     }
@@ -264,13 +264,12 @@ function drawDial(st, d) {
     g += `<path d="${wedge(a0, a0 + sweep, R - 4)}" fill="${its[i].c}" stroke="${cur ? '#ffffff' : face}" stroke-width="${cur ? 8 : 4}" stroke-linejoin="round"/>`;
     mids.push({ a: a0 + sweep / 2, e: its[i].e, c: its[i].c, cur });
   }
+  // луна — просто символ на циферблате сразу после начала сна
   const f = its[its.length - 1];
-  const fa = hourAngle(f.t);
   {
-    const [x0, y0] = pt(fa, 0), [x1, y1] = pt(fa, R - 4);
-    g += `<line x1="${x0}" y1="${y0}" x2="${x1}" y2="${y1}" stroke="${f.c}" stroke-width="10" stroke-linecap="round"/>`;
+    const [mx, my] = pt(hourAngle(f.t) + 16, 250);
+    g += `<text x="${mx}" y="${my}" font-size="110" text-anchor="middle" dominant-baseline="central">${f.e}</text>`;
   }
-  mids.push({ a: fa, e: f.e, c: f.c, cur: mod(nowMin - toMin(f.t), 1440) < (f.until ? mod(toMin(f.until) - toMin(f.t), 1440) : 90) });
 
   // значки занятий снаружи циферблата, с линиями к своему сегменту
   const pos = mids.map(x => x.a);
